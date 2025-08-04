@@ -14,7 +14,7 @@ from microbert.tokenizer import WordTokenizer
 from microbert.utils import IMDBDataloader, get_attention_scores, plot_parallel, plot_results, save_model, load_model
 from hiq.vis import print_model
 
-NUM_EPOCHS = 20
+NUM_EPOCHS = 100
 BATCH_SIZE = 32
 MAX_SEQ_LEN = 128
 LEARNING_RATE = 1e-4
@@ -180,8 +180,8 @@ model_save_dir = os.path.join(home_dir, '.microbert_model')
 # Prepare configuration
 config = {
     'vocab_size': len(tokenizer.vocab),
-    'n_layers': 1,
-    'n_heads': 1,
+    'n_layers': n_layers,
+    'n_heads': n_heads,
     'max_seq_len': MAX_SEQ_LEN,
     'n_classes': 2,
     'batch_size': BATCH_SIZE,
