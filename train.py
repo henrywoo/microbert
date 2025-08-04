@@ -14,7 +14,7 @@ from microbert.tokenizer import WordTokenizer
 from microbert.utils import IMDBDataloader, get_attention_scores, plot_parallel, plot_results, save_model, load_model
 from hiq.vis import print_model
 
-NUM_EPOCHS = 50
+NUM_EPOCHS = 20
 BATCH_SIZE = 32
 MAX_SEQ_LEN = 128
 LEARNING_RATE = 1e-4
@@ -64,10 +64,22 @@ def encode_label(label):
 tokenizer = WordTokenizer(vocab=vocab, max_seq_len=MAX_SEQ_LEN)
 dataloader = IMDBDataloader(data, test_data, tokenizer, encode_label, batch_size=BATCH_SIZE)
 
+# Configuration 1: Single head (simple)
+n_layers, n_embed, n_heads = 1, 3, 1  # head_size = 3
+# Configuration 2: Multi-head (medium)
+#n_layers = 2
+#n_embed, n_heads = 6, 2  # head_size = 3
+#n_embed = 8, n_heads = 4  # head_size = 2
+#n_embed = 12, n_heads = 3 # head_size = 4
+# Configuration 3: Standard BERT style (complex)
+#n_layers = 12  # BERT-base has 12 layers
+#n_embed = 768, n_heads = 12  # head_size = 64
+
 bert = MicroBERTForClassification(
     vocab_size=len(tokenizer.vocab),
-    n_layers=1,
-    n_heads=1,
+    n_layers=n_layers,
+    n_heads=n_heads,
+    n_embed=n_embed,
     max_seq_len=MAX_SEQ_LEN,
     n_classes=2
 ).to(device)
@@ -105,7 +117,9 @@ for i in range(NUM_EPOCHS):
         pred = torch.argmax(probs, dim=-1) # (B)
         train_preds += pred.detach().tolist()
         train_labels += [l.item() for l in batch['label_ids']]
-        loss = F.cross_entropy(logits[:, 0, :].cpu(), batch['label_ids'])
+        input_logits = logits[:, 0, :].cpu()  # (B, 2)
+        target_labels = batch['label_ids'].cpu()  # (B)
+        loss = F.cross_entropy(input_logits, target_labels)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -212,7 +226,7 @@ for sample_index in examples_ids:
 fig = go.Figure(
     data=scatters,
     layout=go.Layout(
-        title=go.layout.Title(text='Embeddings')
+        title=go.layout.Title(text='Raw Embeddings')
     ))
 fig.show()
 
@@ -231,6 +245,6 @@ for sample_index in examples_ids:
 fig = go.Figure(
     data=scatters,
     layout=go.Layout(
-        title=go.layout.Title(text='Raw Embeddings')
+        title=go.layout.Title(text='Final Embeddings')
     ))
 fig.show()

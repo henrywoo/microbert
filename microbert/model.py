@@ -28,34 +28,30 @@ class BertAttentionHead(torch.nn.Module):
     A single attention head in MultiHeaded Self Attention layer.
     The idea is identical to the original paper ("Attention is all you need"),
     however instead of implementing multiple heads to be evaluated in parallel we matrix multiplication,
-    separated in a distinct class for easier and clearer interpretability
+    separated in a distinct class for easier and clearer interpretability.
+    n_embed=3 so that we can visualize the attention scores in 3D space.
     """
 
     def __init__(self, head_size, dropout=0.1, n_embed=3):
         super().__init__()
 
+        self.head_size = head_size  # Store head_size for use in forward method
         self.query = torch.nn.Linear(in_features=n_embed, out_features=head_size)
         self.key = torch.nn.Linear(in_features=n_embed, out_features=head_size)
         self.values = torch.nn.Linear(in_features=n_embed, out_features=head_size)
-
         self.dropout = torch.nn.Dropout(dropout)
 
     def forward(self, x, mask):
         # B, Seq_len, N_embed
         B, seq_len, n_embed = x.shape
-
         q = self.query(x)
         k = self.key(x)
         v = self.values(x)
-
-        weights = (q @ k.transpose(-2, -1)) / math.sqrt(n_embed)  # (B, Seq_len, Seq_len)
+        weights = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_size)  # (B, Seq_len, Seq_len)
         weights = weights.masked_fill(mask == 0, -1e9)  # mask out not attended tokens
-
         scores = F.softmax(weights, dim=-1)
         scores = self.dropout(scores)
-
         context = scores @ v
-
         return context
 
 
@@ -63,27 +59,18 @@ class BertSelfAttention(torch.nn.Module):
     """
     MultiHeaded Self-Attention mechanism as described in "Attention is all you need"
     """
-
     def __init__(self, n_heads=1, dropout=0.1, n_embed=3):
         super().__init__()
-
         head_size = n_embed // n_heads
-
         n_heads = n_heads
-
         self.heads = torch.nn.ModuleList([BertAttentionHead(head_size, dropout, n_embed) for _ in range(n_heads)])
-
         self.proj = torch.nn.Linear(head_size * n_heads, n_embed)  # project from multiple heads to the single space
-
         self.dropout = torch.nn.Dropout(dropout)
 
     def forward(self, x, mask):
         context = torch.cat([head(x, mask) for head in self.heads], dim=-1)
-
         proj = self.proj(context)
-
         out = self.dropout(proj)
-
         return out
 
 
@@ -123,10 +110,8 @@ class BertLayer(torch.nn.Module):
     def forward(self, x, mask):
         x = self.layer_norm1(x)
         x = x + self.self_attention(x, mask)
-
         x = self.layer_norm2(x)
         out = x + self.feed_forward(x)
-
         return out
 
 

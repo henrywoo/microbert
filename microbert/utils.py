@@ -174,24 +174,17 @@ def get_attention_scores(model, input_ids):
     embed = model.micro_bert.embedding(input_ids)
     # can be any layer, and we can also control what to do with output for each layer (aggregate, sum etc.)
     layer = model.micro_bert.encoder.layers[-1]
-
     x = layer.layer_norm1(embed)
-
     B, seq_len, n_embed = x.shape
-
     # if have more than 1 head, or interested in more than 1 head output just add aggregation here
     head = layer.self_attention.heads[0]
-
     # this is just a part of the single head that does all the computations (same code is present in AttentionHead)
     q = head.query(x)
     k = head.key(x)
     v = head.values(x)
-
-    weights = (q @ k.transpose(-2, -1)) / math.sqrt(n_embed)  # (B, Seq_len, Seq_len)
+    weights = (q @ k.transpose(-2, -1)) / math.sqrt(k.shape[-1])  # (B, Seq_len, d_k)
     weights = weights.masked_fill(mask == 0, -1e9)  # mask out not attended tokens
-
     scores = F.softmax(weights, dim=-1)
-
     return scores
 
 

@@ -19,7 +19,7 @@ pip install microbert
 Or install from source:
 
 ```bash
-git clone https://github.com/yourusername/microbert.git
+git clone https://github.com/henrywoo/microbert.git
 cd microbert
 pip install -e .
 ```
