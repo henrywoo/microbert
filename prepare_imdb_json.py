@@ -1,6 +1,6 @@
 from datasets import load_dataset
 import json
-from tokenizer import WordTokenizer
+from microbert.tokenizer import WordTokenizer
 
 # 加载原始 IMDb 数据
 dataset = load_dataset("imdb")
