@@ -149,11 +149,7 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, 
     # Training history
     history = {
         'train_losses': [],
-        'val_losses': [],
-        'train_acc': [],  # For compatibility with plot_results
-        'val_acc': [],    # For compatibility with plot_results
-        'train_f1': [],   # For compatibility with plot_results
-        'val_f1': []      # For compatibility with plot_results
+        'val_losses': []
     }
     best_val_loss = float('inf')
     for epoch in range(num_epochs):
