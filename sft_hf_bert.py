@@ -3,7 +3,7 @@ import json
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from transformers import BertTokenizer, BertModel, AdamW, get_linear_schedule_with_warmup
+from transformers import BertTokenizer, BertModel, get_linear_schedule_with_warmup
 from sklearn.metrics import accuracy_score, f1_score
 from tqdm import tqdm
 import numpy as np
@@ -94,7 +94,7 @@ def train_model(model, train_loader, val_loader, device, tokenizer, num_epochs=3
     """
     Train the sentiment classifier
     """
-    optimizer = AdamW(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     
     # Learning rate scheduler
     total_steps = len(train_loader) * num_epochs
@@ -228,7 +228,7 @@ def load_model(model, tokenizer, save_dir):
     """
     # Load model
     model_path = os.path.join(save_dir, 'model.pth')
-    model.load_state_dict(torch.load(model_path, map_location='cpu'))
+    model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=True))
     
     # Load tokenizer
     tokenizer_path = os.path.join(save_dir, 'tokenizer')

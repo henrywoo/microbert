@@ -14,7 +14,9 @@ class BertEmbeddings(torch.nn.Module):
         self.dropout = torch.nn.Dropout(p=0.1, inplace=False)
 
     def forward(self, x):
-        position_ids = torch.arange(self.max_seq_len, dtype=torch.long, device=x.device)
+        # Create position IDs based on actual sequence length
+        seq_len = x.size(1)
+        position_ids = torch.arange(seq_len, dtype=torch.long, device=x.device)
         words_embeddings = self.word_embeddings(x)
         position_embeddings = self.pos_embeddings(position_ids)
         embeddings = words_embeddings + position_embeddings
@@ -48,7 +50,11 @@ class BertAttentionHead(torch.nn.Module):
         k = self.key(x)
         v = self.values(x)
         weights = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_size)  # (B, Seq_len, Seq_len)
-        weights = weights.masked_fill(mask == 0, -1e9)  # mask out not attended tokens
+        
+        # Handle case where mask might be None
+        if mask is not None:
+            weights = weights.masked_fill(~mask, -1e9)  # mask out not attended tokens
+        
         scores = F.softmax(weights, dim=-1)
         scores = self.dropout(scores)
         context = scores @ v
@@ -62,7 +68,9 @@ class BertSelfAttention(torch.nn.Module):
     def __init__(self, n_heads=1, dropout=0.1, n_embed=3):
         super().__init__()
         head_size = n_embed // n_heads
-        n_heads = n_heads
+        # Ensure head_size is at least 1
+        if head_size < 1:
+            head_size = 1
         self.heads = torch.nn.ModuleList([BertAttentionHead(head_size, dropout, n_embed) for _ in range(n_heads)])
         self.proj = torch.nn.Linear(head_size * n_heads, n_embed)  # project from multiple heads to the single space
         self.dropout = torch.nn.Dropout(dropout)

@@ -7,7 +7,7 @@ Use the trained MicroBERT model for sentiment analysis prediction
 import os
 from microbert.utils import load_model, predict_sentiment
 
-def main():
+def predict():
     # Model file path
     home_dir = os.path.expanduser('~')
     model_dir = os.path.join(home_dir, '.microbert_model')
@@ -41,4 +41,4 @@ def main():
         print()
 
 if __name__ == "__main__":
-    main() 
+    predict() 
