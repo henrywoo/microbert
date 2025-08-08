@@ -163,6 +163,67 @@ def plot_results(history, do_val=True):
     
     # Adjust layout and display
     plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f'MLM training history plot saved to {save_path}')
+    
+    plt.show()
+
+
+def plot_mlm_results(history, save_path=None):
+    """
+    Plot MLM training results using the same styling as plot_results
+    
+    Args:
+        history: Dictionary containing 'train_losses' and 'val_losses' lists
+        save_path: Optional path to save the plot image
+    """
+    # Set style for better looking plots
+    plt.style.use('default')
+    
+    # Create subplots with better layout
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+    fig.suptitle('MLM Training Progress', fontsize=16, fontweight='bold', y=0.95)
+    
+    x = list(range(1, len(history['train_losses']) + 1))
+    
+    # Plot 1: Loss
+    axes[0].plot(x, history['train_losses'], label='Train Loss', linewidth=2, color='#2E86AB', marker='o', markersize=6)
+    axes[0].plot(x, history['val_losses'], label='Validation Loss', linewidth=2, color='#A23B72', marker='s', markersize=6)
+    
+    axes[0].set_title('Loss Over Time', fontsize=14, fontweight='bold', pad=20)
+    axes[0].set_xlabel('Epoch', fontsize=12)
+    axes[0].set_ylabel('Loss', fontsize=12)
+    axes[0].legend(loc='upper right', frameon=True, fancybox=True, shadow=True)
+    axes[0].grid(True, alpha=0.3, linestyle='--')
+    axes[0].set_facecolor('#f8f9fa')
+    
+    # Add loss values as annotations
+    for i, (train_loss, val_loss) in enumerate(zip(history['train_losses'], history['val_losses'])):
+        axes[0].annotate(f'{train_loss:.3f}', (i+1, train_loss), textcoords="offset points", 
+                        xytext=(0,10), ha='center', fontsize=9, color='#2E86AB')
+        axes[0].annotate(f'{val_loss:.3f}', (i+1, val_loss), textcoords="offset points", 
+                        xytext=(0,-15), ha='center', fontsize=9, color='#A23B72')
+    
+    # Plot 2: Loss Difference (Overfitting Analysis)
+    loss_diff = [abs(train - val) for train, val in zip(history['train_losses'], history['val_losses'])]
+    axes[1].plot(x, loss_diff, label='|Train - Val| Loss', linewidth=2, color='#18A558', marker='^', markersize=6)
+    
+    axes[1].set_title('Overfitting Analysis', fontsize=14, fontweight='bold', pad=20)
+    axes[1].set_xlabel('Epoch', fontsize=12)
+    axes[1].set_ylabel('Loss Difference', fontsize=12)
+    axes[1].legend(loc='upper right', frameon=True, fancybox=True, shadow=True)
+    axes[1].grid(True, alpha=0.3, linestyle='--')
+    axes[1].set_facecolor('#f8f9fa')
+    
+    # Add difference values as annotations
+    for i, diff in enumerate(loss_diff):
+        axes[1].annotate(f'{diff:.3f}', (i+1, diff), textcoords="offset points", 
+                        xytext=(0,10), ha='center', fontsize=9, color='#18A558')
+    
+    # Adjust layout and display
+    plt.tight_layout()
     plt.show()
 
 

@@ -7,7 +7,9 @@ from transformers import BertTokenizer, get_linear_schedule_with_warmup
 from tqdm import tqdm
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 from microbert.model import MicroBERT
+from microbert.utils import plot_results, plot_mlm_results
 
 
 class MicroBertMLM(torch.nn.Module):
@@ -147,7 +149,11 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, 
     # Training history
     history = {
         'train_losses': [],
-        'val_losses': []
+        'val_losses': [],
+        'train_acc': [],  # For compatibility with plot_results
+        'val_acc': [],    # For compatibility with plot_results
+        'train_f1': [],   # For compatibility with plot_results
+        'val_f1': []      # For compatibility with plot_results
     }
     best_val_loss = float('inf')
     for epoch in range(num_epochs):
@@ -280,6 +286,16 @@ def main():
         print('Loading existing MLM model...')
         model.load_state_dict(torch.load('.mlm_pretrained/mlm_model.pth', map_location=device, weights_only=True))
         print('MLM model loaded successfully!')
+        
+        # Load training history for plotting
+        history_path = os.path.join('.mlm_pretrained', 'mlm_training_history.json')
+        if os.path.exists(history_path):
+            with open(history_path, 'r') as f:
+                history = json.load(f)
+            print('Training history loaded for plotting.')
+        else:
+            history = None
+            print('No training history found.')
     else:
         print('Starting MLM pre-training...')
         # Train model
@@ -345,6 +361,14 @@ def main():
                     prob = F.softmax(top_logits, dim=0)[j].item()
                     print(f'     {token}: logit={logit:.3f}, prob={prob:.6f}')
         print()
+    
+    # Plot training history if available
+    if history is not None:
+        print('\n=== Plotting Training History ===')
+        # Use MLM-specific plotting function from utils
+        plot_mlm_results(history, save_path='.mlm_pretrained/training_history.png')
+    else:
+        print('\nNo training history available for plotting.')
 
 
 if __name__ == '__main__':
