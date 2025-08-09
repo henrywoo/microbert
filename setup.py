@@ -4,7 +4,7 @@ import os
 setup(
     name='microbert',
     version='0.0.2.dev0',
-    py_modules=['train', 'prepare_imdb_json'],
+    py_modules=['microbert.train', 'microbert.data.prepare_imdb_json'],
     packages=['microbert'],
     install_requires=[
         'torch',

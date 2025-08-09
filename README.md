@@ -2,7 +2,7 @@
 
 This project serves as an educational platform for learning BERT implementation, pretraining, and fine-tuning techniques. It offers a comprehensive framework that helps learners understand transformer architectures and training methodologies through hands-on experience.
 
-The project provides a lightweight BERT implementation with Masked Language Modeling (MLM) pre-training and Supervised Fine-Tuning (SFT) capabilities. It supports multiple datasets and streaming features, with multiple versions optimized for different GPU environments and learning objectives. It supports GPUs from entry-level (GTX 1060, GTX 1660, RTX 2060, RTX 3060, RTX 4060) to mid-range (RTX 2070, RTX 2080, RTX 3070, RTX 3080, RTX 4070, RTX 4080, RTX 4090, A10, A10G, H10, H20) to high-end enterprise (V100, A100, A100 80GB, H100, H200, B100, B200, L40, L40S), with automatic configuration adjustment based on available GPU memory and multi-GPU distributed training support. 
+The project provides a lightweight BERT implementation with Masked Language Modeling (MLM) pre-training and Supervised Fine-Tuning (SFT) capabilities. It supports multiple datasets and streaming features, with multiple versions optimized for different GPU environments and learning objectives. It supports GPUs from entry-level (GTX 1060, GTX 1660, RTX 2060, RTX 3060, RTX 4060) to mid-range (RTX 2070, RTX 2080, RTX 3070, RTX 3080, RTX 4070, RTX 4080, RTX 4090, A10, A10G, H10, H20) to high-end enterprise (V100, A100, A100 80GB, H100, H200, B100, B200, L40, L40S), with automatic configuration adjustment based on available GPU memory and multi-GPU distributed training support.
 
 ## Project Overview
 
