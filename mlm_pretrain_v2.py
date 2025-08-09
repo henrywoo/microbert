@@ -1,6 +1,7 @@
 import os
 import json
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from transformers import BertTokenizer, get_linear_schedule_with_warmup
@@ -12,6 +13,11 @@ from torch.amp import GradScaler
 from torch.cuda.amp import autocast
 from microbert.model import MicroBERT
 from microbert.utils import plot_results, plot_mlm_results
+from hiq.vis import print_model
+
+# Add current directory to path for imports
+import sys
+sys.path.append('.')
 
 
 class MicroBertMLM(torch.nn.Module):
@@ -456,25 +462,26 @@ def main(dataset_choice='imdb', streaming=True, max_samples=None):
     print(f'Training samples: {len(train_data)}')
     print(f'Validation samples: {len(val_data)}')
     
-    # Build vocabulary from data with frequency filtering
+    # Build vocabulary from data
     from collections import Counter
     word_counts = Counter()
     for item in all_data:
         word_counts.update(item['text'])
     
-    # Keep only the most frequent words (top 10000) to limit vocabulary size
-    max_vocab_size = 10000
-    most_common_words = [word for word, count in word_counts.most_common(max_vocab_size)]
+    # Use all unique words from the dataset (no artificial limits)
+    all_unique_words = list(word_counts.keys())
     
-    # Add special tokens
+    # Add special tokens (ensure they're at the beginning and no duplicates)
     special_tokens = ['[PAD]', '[CLS]', '[SEP]', '[UNK]', '[MASK]']
-    vocab = set(special_tokens + most_common_words)
+    # Create vocabulary list with special tokens first, then all dataset words
+    vocab_list = special_tokens + [word for word in all_unique_words if word not in special_tokens]
     
-    print(f'Vocabulary size: {len(vocab)} (limited from {len(word_counts)} total unique words)')
+    print(f'Vocabulary size: {len(vocab_list)} (all unique words from dataset)')
+    print(f'Total unique words in dataset: {len(word_counts)}')
     
     # Create our own tokenizer
     from microbert.tokenizer import WordTokenizer
-    tokenizer = WordTokenizer(vocab=list(vocab), max_seq_len=128)
+    tokenizer = WordTokenizer(vocab=list(vocab_list), max_seq_len=128)
     
     # Create datasets
     train_dataset = MLMDataset(train_data, tokenizer)
@@ -525,6 +532,11 @@ def main(dataset_choice='imdb', streaming=True, max_samples=None):
     # Calculate model parameters
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Total model parameters: {total_params:,}")
+    
+    # Print model structure using hiq
+    print("\n=== Model Structure ===")
+    print_model(model)
+    print("=== End Model Structure ===\n")
     
     # Check if model already exists
     if os.path.exists('.mlm_pretrained/mlm_model.pth'):

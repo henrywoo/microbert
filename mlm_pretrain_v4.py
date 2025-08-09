@@ -30,6 +30,7 @@ sys.path.append('.')
 
 from microbert.model import MicroBERT, BertEmbeddings, BertEncoder
 from microbert.utils import plot_mlm_results
+from hiq.vis import print_model
 
 
 class MicroBertMLM(nn.Module):
@@ -625,16 +626,16 @@ def main():
             for item in all_data:
                 word_counts.update(item['text'])
             
-            # Keep only the most frequent words (optimized for 24GB memory)
-            max_vocab_size = 25000  # Optimized for 24GB memory
-            most_common_words = [word for word, count in word_counts.most_common(max_vocab_size)]
+            # Use all unique words from the dataset (no artificial limits)
+            all_unique_words = list(word_counts.keys())
             
             # Add special tokens (ensure they're at the beginning and no duplicates)
             special_tokens = ['[PAD]', '[CLS]', '[SEP]', '[UNK]', '[MASK]']
-            # Create vocabulary list with special tokens first, then common words
-            vocab_list = special_tokens + [word for word in most_common_words if word not in special_tokens]
+            # Create vocabulary list with special tokens first, then all dataset words
+            vocab_list = special_tokens + [word for word in all_unique_words if word not in special_tokens]
             
-            print(f'Vocabulary size: {len(vocab_list)} (limited from {len(word_counts)} total unique words)')
+            print(f'Vocabulary size: {len(vocab_list)} (all unique words from dataset)')
+            print(f'Total unique words in dataset: {len(word_counts)}')
             
             # Create our own tokenizer
             from microbert.tokenizer import WordTokenizer
@@ -743,6 +744,11 @@ def main():
         if rank == 0:
             total_params = sum(p.numel() for p in model.parameters())
             print(f"Total model parameters: {total_params:,}")
+            
+            # Print model structure using hiq if available
+            print("\n=== Model Structure ===")
+            print_model(model)
+            print("=== End Model Structure ===\n")
         
         # Check if model already exists
         save_dir = '.mlm_pretrained_v4'

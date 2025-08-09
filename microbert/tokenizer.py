@@ -49,7 +49,7 @@ class WordTokenizer:
 
         # Truncate the input sentence to fit within the maximum sequence length
         sentence = sentence[:self.max_seq_len - 2]
-        # Convert words to lowercase
+        # Convert words to lowercase for better matching
         sentence = [w.lower() for w in sentence]
         # Add special tokens ([CLS], [SEP]) and padding tokens ([PAD]) to the input sentence
         sentence = ['[CLS]'] + sentence + ['[SEP]'] + ['[PAD]'] * (self.max_seq_len - len(sentence) - 2)
