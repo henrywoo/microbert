@@ -7,7 +7,7 @@ set -e
 
 # Configuration optimized for 24GB GPU memory
 DATASET="hf"
-BATCH_SIZE_PER_GPU=96  # Optimized for 24GB memory
+BATCH_SIZE_PER_GPU=96  # Will be automatically adjusted based on GPU memory
 EPOCHS=5
 LEARNING_RATE=3e-05  # Standard learning rate for medium model
 STREAMING="true"
@@ -19,17 +19,17 @@ echo "MicroBERT v4 Training (24GB Memory Optimized)"
 echo "=========================================="
 echo "Description: Optimized training for 24GB GPU memory (H200/A10 compatible)"
 echo "Dataset: $DATASET"
-echo "Batch size per GPU: $BATCH_SIZE_PER_GPU"
-echo "Total batch size: $((BATCH_SIZE_PER_GPU * NUM_GPUS))"
+echo "Batch size per GPU: $BATCH_SIZE_PER_GPU (will be auto-adjusted)"
+echo "Total batch size: $((BATCH_SIZE_PER_GPU * NUM_GPUS)) (estimated)"
 echo "Epochs: $EPOCHS"
 echo "Learning rate: $LEARNING_RATE"
 echo "Number of GPUs: $NUM_GPUS"
-echo "Model: 8L/8H/256D (Medium model for 24GB memory)"
+echo "Model: Dynamic (4-6L/8H/128D for large, 6L/8H/128D for medium, 4L/8H/128D for small)"
 echo "Dataset samples: $MAX_SAMPLES"
-echo "Sequence length: 256"
-echo "Vocabulary size: 25,000"
-echo "Estimated time per epoch: 20 minutes"
-echo "Estimated total time: 1.7 hours"
+echo "Sequence length: 128 (reduced for memory)"
+echo "Vocabulary size: 50,000 (limited)"
+echo "Estimated time per epoch: 15 minutes"
+echo "Estimated total time: 1.25 hours"
 echo "=========================================="
 
 # Check available GPUs

@@ -81,7 +81,7 @@ class MicroBertMLM(nn.Module):
 class MLMDataset(Dataset):
     """Dataset for MLM pre-training - v4 optimized for 24GB memory"""
     
-    def __init__(self, data, tokenizer, max_length=256, mlm_probability=0.15):  # Optimized for 24GB memory
+    def __init__(self, data, tokenizer, max_length=128, mlm_probability=0.15):  # Reduced from 256 to 128
         self.data = data
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -597,16 +597,16 @@ def main():
         # Adjust batch size and model configuration based on available memory
         # Target: Stay under 24GB per GPU for all configurations
         if gpu_memory >= 100:  # 100GB+ GPU (like H200)
-            # Use conservative configuration to stay under 24GB per GPU
-            adjusted_batch_size = min(args.batch_size, 32)  # Conservative batch size, max 32
+            # Use very conservative configuration to stay under 24GB per GPU
+            adjusted_batch_size = min(args.batch_size, 16)  # Very conservative batch size, max 16
             model_scale = "large"
         elif gpu_memory >= 40:  # 40GB+ GPU (like A100)
             # Use medium configuration
-            adjusted_batch_size = args.batch_size
+            adjusted_batch_size = min(args.batch_size, 32)  # Conservative batch size, max 32
             model_scale = "medium"
         else:  # 24GB or less (like A10)
             # Use smaller configuration
-            adjusted_batch_size = max(args.batch_size // 2, 16)  # Half batch size, min 16
+            adjusted_batch_size = max(args.batch_size // 4, 8)  # Quarter batch size, min 8
             model_scale = "small"
         
         if rank == 0:
@@ -750,22 +750,22 @@ def main():
             # Use configuration based on GPU memory
             if model_scale == "large":  # 100GB+ GPU
                 if rank == 0:
-                    print("Using large model configuration for high-memory GPU (100GB+) - conservative for 24GB per GPU...")
+                    print("Using large model configuration for high-memory GPU (100GB+) - very conservative for 24GB per GPU...")
                 n_heads = 8
-                n_embed = 256
-                n_layers = 6   # Reduced from 8
+                n_embed = 128  # Reduced from 256
+                n_layers = 4   # Reduced from 6
             elif model_scale == "medium":  # 40GB+ GPU
                 if rank == 0:
                     print("Using medium model configuration for medium-memory GPU (40GB+)...")
                 n_heads = 8
-                n_embed = 256  # Medium size
-                n_layers = 8   # Medium layers
+                n_embed = 128  # Reduced from 256
+                n_layers = 6   # Reduced from 8
             else:  # 24GB or less
                 if rank == 0:
                     print("Using small model configuration for low-memory GPU (24GB or less)...")
                 n_heads = 8
-                n_embed = 256  # Optimized for 24GB memory
-                n_layers = 8   # Optimized for 24GB memory
+                n_embed = 128  # Reduced from 256
+                n_layers = 4   # Reduced from 8
             head_size = n_embed // n_heads
             num_epochs = args.epochs
             learning_rate = args.lr
@@ -773,22 +773,22 @@ def main():
             # Use configuration based on GPU memory for IMDB dataset too
             if model_scale == "large":  # 100GB+ GPU
                 if rank == 0:
-                    print("Using large model configuration for IMDB dataset (high-memory GPU) - conservative for 24GB per GPU...")
+                    print("Using large model configuration for IMDB dataset (high-memory GPU) - very conservative for 24GB per GPU...")
                 n_heads = 4
-                n_embed = 128
-                n_layers = 6
+                n_embed = 64   # Reduced from 128
+                n_layers = 4   # Reduced from 6
             elif model_scale == "medium":  # 40GB+ GPU
                 if rank == 0:
                     print("Using medium model configuration for IMDB dataset (medium-memory GPU)...")
                 n_heads = 4
-                n_embed = 128
-                n_layers = 6
+                n_embed = 64   # Reduced from 128
+                n_layers = 4   # Reduced from 6
             else:  # 24GB or less
                 if rank == 0:
                     print("Using small model configuration for IMDB dataset (low-memory GPU)...")
                 n_heads = 4
-                n_embed = 128  # Optimized for 24GB memory
-                n_layers = 6   # Optimized for 24GB memory
+                n_embed = 64   # Reduced from 128
+                n_layers = 4   # Reduced from 6
             head_size = n_embed // n_heads
             num_epochs = args.epochs
             learning_rate = args.lr
@@ -798,6 +798,13 @@ def main():
             n_embed = ((n_embed + n_heads - 1) // n_heads) * n_heads
             if rank == 0:
                 print(f"Warning: n_embed adjusted to {n_embed} to be divisible by n_heads {n_heads}")
+        
+        # Limit vocabulary size to reduce memory usage
+        max_vocab_size = 50000  # Limit vocabulary size to save memory
+        if len(tokenizer.vocab) > max_vocab_size:
+            if rank == 0:
+                print(f"Warning: Vocabulary size {len(tokenizer.vocab)} exceeds limit {max_vocab_size}")
+                print("This may cause memory issues. Consider reducing dataset size or using smaller vocabulary.")
         
         if rank == 0:
             print(f"Model configuration (v4 - Dynamic Memory Optimization):")
@@ -810,13 +817,15 @@ def main():
             print(f"  - learning_rate: {learning_rate}")
             print(f"  - batch_size_per_gpu: {adjusted_batch_size}")
             print(f"  - total_batch_size: {adjusted_batch_size * world_size}")
+            print(f"  - max_seq_len: 128 (reduced for memory)")
+            print(f"  - max_vocab_size: {max_vocab_size}")
         
         model = MicroBertMLM(
-            vocab_size=len(tokenizer.vocab),
+            vocab_size=min(len(tokenizer.vocab), max_vocab_size),  # Limit vocabulary size
             n_layers=n_layers,
             n_heads=n_heads,
             n_embed=n_embed,
-            max_seq_len=256  # Optimized for 24GB memory
+            max_seq_len=128  # Reduced from 256 to save memory
         )
         
         # Calculate model parameters (only on main process)
