@@ -97,27 +97,40 @@ torchrun \
     --lr 3e-5 \
     --streaming true \
     --max-samples 500k
+```
+- **适用场景**: 多GPU训练、大规模数据集
+- **数据集**: Hugging Face数据集 (可配置大小: 500K-50M样本) 或 IMDB
+- **模型**: 中等模型 (6层, 8头, 16维嵌入) 或小模型
+- **训练时间**: ~15分钟 (500K) / ~1.3小时 (5M) / ~13小时 (50M)
+- **内存需求**: 中等
+- **GPU要求**: 8卡H200或类似配置
 
-# 指定数据大小 (5M样本)
+#### **v4: 24GB内存优化训练 (H200/A10兼容)**
+```bash
+# 使用预配置脚本 (推荐)
+./train_h200_8gpu_v4.sh
+
+# 或直接使用torchrun (24GB内存优化)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v3.py \
+    mlm_pretrain_v4.py \
     --dataset hf \
-    --batch-size 32 \
+    --batch-size 96 \
     --epochs 5 \
     --lr 3e-5 \
     --streaming true \
-    --max-samples 5M
+    --max-samples 10M
 ```
-- **适用场景**: 大规模训练、多GPU环境
-- **数据集**: Hugging Face大数据集 (可配置大小: 500K-500M样本)
-- **模型**: 大模型 (6层, 8头, 16维嵌入)
-- **训练时间**: ~30分钟 (500K) / ~2小时 (5M) / ~20小时 (50M) (8GPU)
-- **内存需求**: 高 (需要多GPU)
+- **适用场景**: 24GB GPU内存优化训练 (H200/A10兼容)
+- **数据集**: Hugging Face数据集 (可配置大小: 500K-50M样本) 或 IMDB
+- **模型**: 大模型 (8层, 8头, 256维嵌入) 或中等模型
+- **训练时间**: ~20分钟 (10M样本)
+- **内存需求**: 高 (20GB/24GB = 83%利用率)
+- **GPU要求**: 24GB+ GPU (H200, A10, RTX 4090等)
 
 ## Project Structure
 

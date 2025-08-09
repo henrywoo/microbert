@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# Auto-generated training script for H200 8-GPU Standard Training
-# Generated from configuration: h200_8gpu_standard
+# Optimized training script for MicroBERT v4 (24GB Memory Optimized)
+# This script is designed to maximize GPU memory utilization while ensuring compatibility
 
 set -e
 
-# Configuration
+# Configuration optimized for 24GB GPU memory
 DATASET="hf"
-BATCH_SIZE_PER_GPU=64  # Optimized for 24GB memory
+BATCH_SIZE_PER_GPU=96  # Optimized for 24GB memory
 EPOCHS=5
-LEARNING_RATE=3e-05
+LEARNING_RATE=3e-05  # Standard learning rate for medium model
 STREAMING="true"
 NUM_GPUS=8
-MAX_SAMPLES="5M"  # Optimized for 24GB memory
+MAX_SAMPLES="10M"  # Optimized for 24GB memory
 
 echo "=========================================="
-echo "H200 8-GPU Optimized Training (24GB Memory)"
+echo "MicroBERT v4 Training (24GB Memory Optimized)"
 echo "=========================================="
-echo "Description: Optimized training on H200 8-GPU setup with medium model for 24GB memory"
+echo "Description: Optimized training for 24GB GPU memory (H200/A10 compatible)"
 echo "Dataset: $DATASET"
 echo "Batch size per GPU: $BATCH_SIZE_PER_GPU"
 echo "Total batch size: $((BATCH_SIZE_PER_GPU * NUM_GPUS))"
@@ -26,8 +26,10 @@ echo "Learning rate: $LEARNING_RATE"
 echo "Number of GPUs: $NUM_GPUS"
 echo "Model: 8L/8H/256D (Medium model for 24GB memory)"
 echo "Dataset samples: $MAX_SAMPLES"
-echo "Estimated time per epoch: 15 minutes"
-echo "Estimated total time: 1.3 hours"
+echo "Sequence length: 256"
+echo "Vocabulary size: 25,000"
+echo "Estimated time per epoch: 20 minutes"
+echo "Estimated total time: 1.7 hours"
 echo "=========================================="
 
 # Check available GPUs
@@ -45,19 +47,19 @@ mkdir -p logs
 
 # Generate timestamp for log file
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-LOG_FILE="logs/h200_8gpu_standard_training_$TIMESTAMP.log"
+LOG_FILE="logs/v4_training_$TIMESTAMP.log"
 
-echo "Starting training..."
+echo "Starting MicroBERT v4 training..."
 echo "Log file: $LOG_FILE"
 
-# Launch distributed training
+# Launch distributed training with optimized settings
 torchrun \
     --nproc_per_node=$NUM_GPUS \
     --nnodes=1 \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v3.py \
+    mlm_pretrain_v4.py \
     --dataset $DATASET \
     --batch-size $BATCH_SIZE_PER_GPU \
     --epochs $EPOCHS \
@@ -66,8 +68,8 @@ torchrun \
     --max-samples $MAX_SAMPLES \
     2>&1 | tee $LOG_FILE
 
-echo "Training completed!"
-echo "Results saved to: .mlm_pretrained_v3/"
+echo "MicroBERT v4 training completed!"
+echo "Results saved to: .mlm_pretrained_v4/"
 echo "Log file: $LOG_FILE"
 
 # Show GPU utilization summary

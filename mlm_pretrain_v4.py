@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Multi-GPU MLM pre-training script for MicroBERT
-Optimized for H200 8-card environment
+Multi-GPU MLM pre-training script for MicroBERT v4
+Optimized for 24GB GPU memory (H200/A10 compatible)
 """
 
 import os
@@ -33,9 +33,9 @@ from microbert.utils import plot_mlm_results
 
 
 class MicroBertMLM(nn.Module):
-    """MicroBERT for Masked Language Modeling"""
+    """MicroBERT for Masked Language Modeling - v4 optimized for 24GB memory"""
     
-    def __init__(self, vocab_size, n_layers=2, n_heads=1, n_embed=3, max_seq_len=128):
+    def __init__(self, vocab_size, n_layers=8, n_heads=8, n_embed=256, max_seq_len=256):
         super().__init__()
         # Only include the components needed for MLM
         self.embedding = BertEmbeddings(vocab_size, n_embed, max_seq_len)
@@ -78,9 +78,9 @@ class MicroBertMLM(nn.Module):
 
 
 class MLMDataset(Dataset):
-    """Dataset for MLM pre-training"""
+    """Dataset for MLM pre-training - v4 optimized for 24GB memory"""
     
-    def __init__(self, data, tokenizer, max_length=128, mlm_probability=0.15):  # Restored to original
+    def __init__(self, data, tokenizer, max_length=256, mlm_probability=0.15):  # Optimized for 24GB memory
         self.data = data
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -344,7 +344,7 @@ def load_text_data(dataset_choice='imdb', streaming=True, max_samples=None):
 
 
 def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_epochs=3, learning_rate=5e-5, local_rank=0):
-    """Train MLM model with multi-GPU support"""
+    """Train MLM model with multi-GPU support - v4 optimized for 24GB memory"""
     
     # Move model to device
     model = model.to(device)
@@ -445,7 +445,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
             print(f'Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f}')
             
             # Save model checkpoint
-            save_dir = '.mlm_pretrained_v3'
+            save_dir = '.mlm_pretrained_v4'
             os.makedirs(save_dir, exist_ok=True)
             
             # Save model state dict
@@ -540,22 +540,22 @@ def cleanup_distributed():
 
 
 def main():
-    """Main function for multi-GPU MLM training"""
+    """Main function for multi-GPU MLM training - v4 optimized for 24GB memory"""
     
     # Parse arguments
-    parser = argparse.ArgumentParser(description='Multi-GPU MLM Pre-training')
+    parser = argparse.ArgumentParser(description='Multi-GPU MLM Pre-training v4 (24GB Memory Optimized)')
     parser.add_argument('--dataset', choices=['imdb', 'hf'], default='hf',
                        help='Dataset choice: imdb or hf')
     parser.add_argument('--streaming', type=str, default='true',
                        help='Streaming mode: true or false')
-    parser.add_argument('--batch-size', type=int, default=32,
-                       help='Batch size per GPU')
+    parser.add_argument('--batch-size', type=int, default=96,
+                       help='Batch size per GPU (optimized for 24GB memory)')
     parser.add_argument('--epochs', type=int, default=5,
                        help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=3e-5,
                        help='Learning rate')
-    parser.add_argument('--max-samples', type=str, default=None,
-                       help='Maximum number of samples to load (e.g., 500k, 5M, 50M, 500M)')
+    parser.add_argument('--max-samples', type=str, default='10M',
+                       help='Maximum number of samples to load (e.g., 500k, 5M, 10M, 50M)')
     parser.add_argument('--local_rank', type=int, default=0,
                        help='Local rank for distributed training')
     
@@ -583,11 +583,11 @@ def main():
         elif max_samples_str.isdigit():
             max_samples = int(max_samples_str)
         else:
-            print(f"Unknown max_samples format: {args.max_samples}. Using default (500k)")
+            print(f"Unknown max_samples format: {args.max_samples}. Using default (10M)")
     
     # Print setup info (only on main process)
     if rank == 0:
-        print(f'Multi-GPU MLM Training Setup:')
+        print(f'Multi-GPU MLM Training v4 Setup (24GB Memory Optimized):')
         print(f'  - World Size: {world_size}')
         print(f'  - Local Rank: {local_rank}')
         print(f'  - Device: {device}')
@@ -625,8 +625,8 @@ def main():
             for item in all_data:
                 word_counts.update(item['text'])
             
-            # Keep only the most frequent words (restored to original)
-            max_vocab_size = 10000  # Restored to original
+            # Keep only the most frequent words (optimized for 24GB memory)
+            max_vocab_size = 25000  # Optimized for 24GB memory
             most_common_words = [word for word, count in word_counts.most_common(max_vocab_size)]
             
             # Add special tokens (ensure they're at the beginning and no duplicates)
@@ -638,7 +638,7 @@ def main():
             
             # Create our own tokenizer
             from microbert.tokenizer import WordTokenizer
-            tokenizer = WordTokenizer(vocab=vocab_list, max_seq_len=128)  # Restored to original
+            tokenizer = WordTokenizer(vocab=vocab_list, max_seq_len=256)  # Optimized for 24GB memory
             
             # Save tokenizer for other processes
             torch.save(tokenizer, '.temp_tokenizer.pth')
@@ -678,7 +678,7 @@ def main():
                 train_dataset, 
                 batch_size=args.batch_size, 
                 sampler=train_sampler,
-                num_workers=4,  # Restored to original
+                num_workers=6,  # Optimized for 24GB memory
                 pin_memory=True,
                 prefetch_factor=2  # Added prefetch_factor for better performance
             )
@@ -686,32 +686,32 @@ def main():
                 val_dataset, 
                 batch_size=args.batch_size, 
                 sampler=val_sampler,
-                num_workers=4,  # Restored to original
+                num_workers=6,  # Optimized for 24GB memory
                 pin_memory=True,
                 prefetch_factor=2  # Added prefetch_factor for better performance
             )
         else:
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, prefetch_factor=2)
-            val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True, prefetch_factor=2)
+            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=6, pin_memory=True, prefetch_factor=2)
+            val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=6, pin_memory=True, prefetch_factor=2)
         
-        # Initialize model based on dataset choice
+        # Initialize model based on dataset choice (optimized for 24GB memory)
         if args.dataset.lower() == 'hf':
-            # Use original model configuration for Hugging Face datasets
+            # Use medium model for Hugging Face datasets (optimized for 24GB GPU memory)
             if rank == 0:
-                print("Using original model configuration for Hugging Face dataset...")
+                print("Using medium model configuration for Hugging Face dataset (optimized for 24GB GPU memory)...")
             n_heads = 8
-            n_embed = 16  # Restored to original
-            n_layers = 6  # Restored to original
+            n_embed = 256  # Optimized for 24GB memory
+            n_layers = 8   # Optimized for 24GB memory
             head_size = n_embed // n_heads
             num_epochs = args.epochs
             learning_rate = args.lr
         else:
-            # Use original model configuration for IMDB dataset
+            # Use medium model for IMDB dataset too
             if rank == 0:
-                print("Using original model configuration for IMDB dataset...")
+                print("Using medium model configuration for IMDB dataset...")
             n_heads = 4
-            n_embed = 8   # Restored to original
-            n_layers = 4  # Restored to original
+            n_embed = 128  # Optimized for 24GB memory
+            n_layers = 6   # Optimized for 24GB memory
             head_size = n_embed // n_heads
             num_epochs = args.epochs
             learning_rate = args.lr
@@ -723,7 +723,7 @@ def main():
                 print(f"Warning: n_embed adjusted to {n_embed} to be divisible by n_heads {n_heads}")
         
         if rank == 0:
-            print(f"Model configuration:")
+            print(f"Model configuration (v4 - 24GB optimized):")
             print(f"  - n_heads: {n_heads}")
             print(f"  - n_embed: {n_embed}")
             print(f"  - n_layers: {n_layers}")
@@ -736,7 +736,7 @@ def main():
             n_layers=n_layers,
             n_heads=n_heads,
             n_embed=n_embed,
-            max_seq_len=128  # Restored to original
+            max_seq_len=256  # Optimized for 24GB memory
         )
         
         # Calculate model parameters (only on main process)
@@ -745,7 +745,7 @@ def main():
             print(f"Total model parameters: {total_params:,}")
         
         # Check if model already exists
-        save_dir = '.mlm_pretrained_v3'
+        save_dir = '.mlm_pretrained_v4'
         model_path = os.path.join(save_dir, 'mlm_model.pth')
         
         if os.path.exists(model_path) and rank == 0:
@@ -764,7 +764,7 @@ def main():
                 print('No training history found.')
         else:
             if rank == 0:
-                print('Starting MLM pre-training...')
+                print('Starting MLM pre-training v4 (24GB optimized)...')
             
             # Train model
             history = train_mlm_multi_gpu(
@@ -773,7 +773,7 @@ def main():
             )
             
             if rank == 0:
-                print('MLM pre-training completed!')
+                print('MLM pre-training v4 completed!')
         
         # Cleanup temporary files
         if rank == 0:
@@ -788,7 +788,7 @@ def main():
         
         # Test model (only on main process)
         if rank == 0:
-            print('=== Testing MLM Model ===')
+            print('=== Testing MLM Model v4 ===')
             
             # Load model for testing
             if isinstance(model, DDP):
@@ -819,10 +819,10 @@ def main():
                         input_ids.append(tokenizer.vocab.get(token, tokenizer.vocab['[UNK]']))
                 
                 # Pad or truncate
-                if len(input_ids) > 128:
-                    input_ids = input_ids[:128]
+                if len(input_ids) > 256:
+                    input_ids = input_ids[:256]
                 else:
-                    input_ids = input_ids + [tokenizer.vocab['[PAD]']] * (128 - len(input_ids))
+                    input_ids = input_ids + [tokenizer.vocab['[PAD]']] * (256 - len(input_ids))
                 
                 input_ids = torch.tensor([input_ids]).to(device)
                 
