@@ -308,10 +308,10 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     return load_imdb_data()
 
 
-def load_text_data(dataset_choice='imdb', streaming=True):
+def load_text_data(dataset_choice='imdb', streaming=True, max_samples=None):
     """Load text data based on choice"""
     if dataset_choice.lower() == 'hf':
-        return load_hf_dataset(streaming=streaming)
+        return load_hf_dataset(max_samples=max_samples, streaming=streaming)
     else:
         return load_imdb_data()
 
@@ -508,6 +508,8 @@ def main():
                        help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=3e-5,
                        help='Learning rate')
+    parser.add_argument('--max-samples', type=str, default=None,
+                       help='Maximum number of samples to load (e.g., 500k, 5M, 50M, 500M)')
     parser.add_argument('--local_rank', type=int, default=0,
                        help='Local rank for distributed training')
     
@@ -518,6 +520,19 @@ def main():
     
     # Set device
     device = torch.device(f'cuda:{local_rank}' if torch.cuda.is_available() else 'cpu')
+    
+    # Parse max_samples argument
+    max_samples = None
+    if args.max_samples:
+        max_samples_str = args.max_samples.upper()
+        if max_samples_str.endswith('K'):
+            max_samples = int(max_samples_str[:-1]) * 1000
+        elif max_samples_str.endswith('M'):
+            max_samples = int(max_samples_str[:-1]) * 1000000
+        elif max_samples_str.isdigit():
+            max_samples = int(max_samples_str)
+        else:
+            print(f"Unknown max_samples format: {args.max_samples}. Using default (500k)")
     
     # Print setup info (only on main process)
     if rank == 0:
@@ -531,12 +546,13 @@ def main():
         print(f'  - Total Batch Size: {args.batch_size * world_size}')
         print(f'  - Epochs: {args.epochs}')
         print(f'  - Learning Rate: {args.lr}')
+        print(f'  - Max Samples: {max_samples}')
     
     try:
         # Load data (only on main process)
         if rank == 0:
-            print(f'Loading dataset for MLM pre-training (choice: {args.dataset}, streaming: {args.streaming})...')
-            train_data, test_data = load_text_data(args.dataset, streaming=args.streaming.lower() == 'true')
+            print(f'Loading dataset for MLM pre-training (choice: {args.dataset}, streaming: {args.streaming}, max_samples: {max_samples})...')
+            train_data, test_data = load_text_data(args.dataset, streaming=args.streaming.lower() == 'true', max_samples=max_samples)
             
             # Use all data for MLM pre-training (unsupervised)
             if test_data:

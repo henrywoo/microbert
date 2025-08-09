@@ -307,18 +307,19 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
         return [], []
 
 
-def load_text_data(dataset_choice='imdb', streaming=True):
+def load_text_data(dataset_choice='imdb', streaming=True, max_samples=None):
     """
     Load text dataset based on user choice
     
     Args:
         dataset_choice: 'imdb' for IMDB dataset, 'hf' for Hugging Face dataset
         streaming: If True, use streaming mode for Hugging Face datasets
+        max_samples: Maximum number of samples to load (for HF datasets)
     """
     if dataset_choice.lower() == 'imdb':
         return load_imdb_data()
     elif dataset_choice.lower() in ['hf', 'huggingface', 'large']:
-        return load_hf_dataset(streaming=streaming)
+        return load_hf_dataset(max_samples=max_samples, streaming=streaming)
     else:
         print(f"Unknown dataset choice: {dataset_choice}. Using IMDB dataset.")
         return load_imdb_data()
@@ -407,20 +408,22 @@ def save_mlm_model(model, tokenizer, history, save_dir):
     print(f'MLM model saved to {save_dir}')
 
 
-def main(dataset_choice='imdb', streaming=True):
+def main(dataset_choice='imdb', streaming=True, max_samples=None):
     """
     Main MLM pre-training function
     
     Args:
         dataset_choice: 'imdb' for IMDB dataset (fast), 'hf' for Hugging Face dataset (large)
+        streaming: If True, use streaming mode for Hugging Face datasets
+        max_samples: Maximum number of samples to load (for HF datasets)
     """
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Using device: {device}')
     
     # Load data
-    print(f'Loading dataset for MLM pre-training (choice: {dataset_choice}, streaming: {streaming})...')
-    train_data, test_data = load_text_data(dataset_choice, streaming=streaming)
+    print(f'Loading dataset for MLM pre-training (choice: {dataset_choice}, streaming: {streaming}, max_samples: {max_samples})...')
+    train_data, test_data = load_text_data(dataset_choice, streaming=streaming, max_samples=max_samples)
     
     # Use all data for MLM pre-training (unsupervised)
     if test_data:
@@ -603,15 +606,17 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         dataset_choice = sys.argv[1]
     else:
-        print("Usage: python mlm_pretrain.py [imdb|hf] [streaming]")
+        print("Usage: python mlm_pretrain_v2.py [imdb|hf] [streaming] [max_samples]")
         print("  imdb: Use IMDB dataset (fast, ~50K samples)")
-        print("  hf:   Use Hugging Face dataset (large, ~100K samples)")
+        print("  hf:   Use Hugging Face dataset (large, configurable size)")
         print("  streaming: 'true' for streaming mode (default, saves disk space)")
         print("             'false' for local download mode (faster, uses more disk)")
+        print("  max_samples: Maximum number of samples to load (e.g., 500k, 5M, 50M, 500M)")
         print("Examples:")
-        print("  python mlm_pretrain.py imdb          # IMDB with streaming")
-        print("  python mlm_pretrain.py hf            # HF dataset with streaming (default)")
-        print("  python mlm_pretrain.py hf false      # HF dataset with local download")
+        print("  python mlm_pretrain_v2.py imdb                    # IMDB with streaming")
+        print("  python mlm_pretrain_v2.py hf                      # HF dataset with streaming (default 500k)")
+        print("  python mlm_pretrain_v2.py hf true 5M              # HF dataset with 5M samples")
+        print("  python mlm_pretrain_v2.py hf false 50M            # HF dataset with 50M samples (local download)")
         print("Defaulting to IMDB dataset with streaming...")
         dataset_choice = 'imdb'
     
@@ -626,8 +631,22 @@ if __name__ == '__main__':
         else:
             print(f"Unknown streaming argument: {sys.argv[2]}. Using streaming=True")
     
+    # Parse max_samples argument
+    max_samples = None  # Default to 500k for HF datasets
+    if len(sys.argv) > 3:
+        max_samples_str = sys.argv[3].upper()
+        if max_samples_str.endswith('K'):
+            max_samples = int(max_samples_str[:-1]) * 1000
+        elif max_samples_str.endswith('M'):
+            max_samples = int(max_samples_str[:-1]) * 1000000
+        elif max_samples_str.isdigit():
+            max_samples = int(max_samples_str)
+        else:
+            print(f"Unknown max_samples format: {sys.argv[3]}. Using default (500k)")
+    
     print(f"Dataset choice: {dataset_choice}")
     print(f"Streaming mode: {streaming}")
+    print(f"Max samples: {max_samples}")
     print()
     
-    main(dataset_choice, streaming=streaming) 
+    main(dataset_choice, streaming=streaming, max_samples=max_samples) 

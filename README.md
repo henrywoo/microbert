@@ -59,16 +59,22 @@ python mlm_pretrain_v1.py
 
 #### **v2: 标准训练 (Hugging Face数据集)**
 ```bash
-# 使用Hugging Face大数据集
+# 使用Hugging Face大数据集 (默认500K样本)
 python mlm_pretrain_v2.py hf
+
+# 指定数据大小 (5M样本)
+python mlm_pretrain_v2.py hf true 5M
+
+# 指定数据大小 (50M样本)
+python mlm_pretrain_v2.py hf false 50M
 
 # 或使用IMDB数据集
 python mlm_pretrain_v2.py imdb
 ```
 - **适用场景**: 标准训练、中等规模数据集
-- **数据集**: Hugging Face数据集 (~500K-1M样本) 或 IMDB
+- **数据集**: Hugging Face数据集 (可配置大小: 500K-500M样本) 或 IMDB
 - **模型**: 中等模型 (4层, 4头, 8维嵌入) 或小模型
-- **训练时间**: ~30分钟 (HF) / ~5分钟 (IMDB)
+- **训练时间**: ~30分钟 (500K) / ~2小时 (5M) / ~20小时 (50M)
 - **内存需求**: 中等
 
 #### **v3: 多GPU训练 (H200 8卡)**
@@ -77,7 +83,7 @@ python mlm_pretrain_v2.py imdb
 python multi_gpu_configs.py generate h200_8gpu_standard
 ./train_h200_8gpu_standard.sh
 
-# 或直接使用torchrun
+# 或直接使用torchrun (默认500K样本)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -90,11 +96,26 @@ torchrun \
     --epochs 5 \
     --lr 3e-5 \
     --streaming true
+
+# 指定数据大小 (5M样本)
+torchrun \
+    --nproc_per_node=8 \
+    --nnodes=1 \
+    --node_rank=0 \
+    --master_addr=localhost \
+    --master_port=12355 \
+    mlm_pretrain_v3.py \
+    --dataset hf \
+    --batch-size 32 \
+    --epochs 5 \
+    --lr 3e-5 \
+    --streaming true \
+    --max-samples 5M
 ```
 - **适用场景**: 大规模训练、多GPU环境
-- **数据集**: Hugging Face大数据集
+- **数据集**: Hugging Face大数据集 (可配置大小: 500K-500M样本)
 - **模型**: 大模型 (6层, 8头, 16维嵌入)
-- **训练时间**: ~30分钟 (8GPU)
+- **训练时间**: ~30分钟 (500K) / ~2小时 (5M) / ~20小时 (50M) (8GPU)
 - **内存需求**: 高 (需要多GPU)
 
 ## Project Structure
@@ -261,11 +282,14 @@ MLM pre-training completed!
 **适用场景**: 标准训练、中等规模数据集
 
 ```bash
-# 使用Hugging Face数据集 (流式模式)
+# 使用Hugging Face数据集 (流式模式，默认500K样本)
 python mlm_pretrain_v2.py hf
 
-# 使用Hugging Face数据集 (本地下载模式)
-python mlm_pretrain_v2.py hf false
+# 指定数据大小 (5M样本，流式模式)
+python mlm_pretrain_v2.py hf true 5M
+
+# 指定数据大小 (50M样本，本地下载模式)
+python mlm_pretrain_v2.py hf false 50M
 
 # 使用IMDB数据集
 python mlm_pretrain_v2.py imdb
@@ -319,7 +343,7 @@ python multi_gpu_configs.py generate h200_8gpu_quality
 # 运行生成的脚本
 ./train_h200_8gpu_standard.sh
 
-# 或直接使用torchrun
+# 或直接使用torchrun (默认500K样本)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -332,6 +356,21 @@ torchrun \
     --epochs 5 \
     --lr 3e-5 \
     --streaming true
+
+# 指定数据大小 (5M样本)
+torchrun \
+    --nproc_per_node=8 \
+    --nnodes=1 \
+    --node_rank=0 \
+    --master_addr=localhost \
+    --master_port=12355 \
+    mlm_pretrain_v3.py \
+    --dataset hf \
+    --batch-size 32 \
+    --epochs 5 \
+    --lr 3e-5 \
+    --streaming true \
+    --max-samples 5M
 ```
 
 **输出示例:**
