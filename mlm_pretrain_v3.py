@@ -29,7 +29,7 @@ import datetime
 import sys
 sys.path.append('.')
 
-from microbert.model import MicroBERT
+from microbert.model import MicroBERT, BertEmbeddings, BertEncoder
 from microbert.utils import plot_mlm_results
 
 
@@ -38,18 +38,14 @@ class MicroBertMLM(nn.Module):
     
     def __init__(self, vocab_size, n_layers=2, n_heads=1, n_embed=3, max_seq_len=128):
         super().__init__()
-        self.micro_bert = MicroBERT(
-            vocab_size=vocab_size,
-            n_layers=n_layers,
-            n_heads=n_heads,
-            n_embed=n_embed,
-            max_seq_len=max_seq_len
-        )
+        # Only include the components needed for MLM
+        self.embedding = BertEmbeddings(vocab_size, n_embed, max_seq_len)
+        self.encoder = BertEncoder(n_layers, n_heads, dropout=0.1, n_embed=n_embed)
         self.mlm_head = nn.Linear(n_embed, vocab_size)
         
     def forward(self, input_ids, labels=None):
-        # Get embeddings from MicroBERT
-        embeddings = self.micro_bert.embedding(input_ids)
+        # Get embeddings
+        embeddings = self.embedding(input_ids)
         
         # Create attention mask for padding - ensure proper dimensions
         # input_ids shape: (batch_size, seq_len)
@@ -60,7 +56,7 @@ class MicroBertMLM(nn.Module):
         attention_mask = (input_ids > 0).unsqueeze(1).expand(batch_size, seq_len, seq_len).bool()
         
         # Pass through encoder
-        encoded = self.micro_bert.encoder(embeddings, attention_mask)
+        encoded = self.encoder(embeddings, attention_mask)
         
         # MLM head
         logits = self.mlm_head(encoded)
@@ -345,7 +341,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
     
     # Wrap model with DDP if using multiple GPUs (check world_size instead of device_count)
     if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
-        model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+        model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
     
     # Initialize optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
