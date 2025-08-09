@@ -244,7 +244,9 @@ def get_attention_scores(model, input_ids):
     k = head.key(x)
     v = head.values(x)
     weights = (q @ k.transpose(-2, -1)) / math.sqrt(k.shape[-1])  # (B, Seq_len, d_k)
-    weights = weights.masked_fill(mask == 0, -1e9)  # mask out not attended tokens
+    # Use a value compatible with float16 (Half) type
+    neg_inf = torch.finfo(weights.dtype).min
+    weights = weights.masked_fill(mask == 0, neg_inf)  # mask out not attended tokens
     scores = F.softmax(weights, dim=-1)
     return scores
 

@@ -8,6 +8,7 @@ from tqdm import tqdm
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+from torch.cuda.amp import GradScaler, autocast
 from microbert.model import MicroBERT
 from microbert.utils import plot_results, plot_mlm_results
 
@@ -327,7 +328,7 @@ def load_text_data(dataset_choice='imdb', streaming=True, max_samples=None):
 
 def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, learning_rate=5e-5):
     """
-    Train the MLM model
+    Train the MLM model with bfloat16 mixed precision
     """
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     # Learning rate scheduler
@@ -337,12 +338,16 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, 
         num_warmup_steps=int(0.1 * total_steps),
         num_training_steps=total_steps
     )
+    # Initialize gradient scaler for mixed precision
+    scaler = GradScaler()
+    
     # Training history
     history = {
         'train_losses': [],
         'val_losses': []
     }
     best_val_loss = float('inf')
+    
     for epoch in range(num_epochs):
         print(f'Epoch {epoch + 1}/{num_epochs}')
         # Training phase
@@ -352,12 +357,19 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, 
             input_ids = batch['input_ids'].to(device)
             labels = batch['labels'].to(device)
             optimizer.zero_grad()
-            loss = model(input_ids, labels)
-            loss.backward()
+            
+            # Forward pass with bfloat16 mixed precision
+            with autocast(dtype=torch.bfloat16):
+                loss = model(input_ids, labels)
+            
+            # Backward pass with gradient scaling
+            scaler.scale(loss).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()
             scheduler.step()
             train_loss += loss.item()
+        
         # Validation phase
         model.eval()
         val_loss = 0.0
@@ -365,8 +377,12 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, 
             for batch in tqdm(val_loader, desc='Validation'):
                 input_ids = batch['input_ids'].to(device)
                 labels = batch['labels'].to(device)
-                loss = model(input_ids, labels)
+                
+                with autocast(dtype=torch.bfloat16):
+                    loss = model(input_ids, labels)
+                
                 val_loss += loss.item()
+        
         # Store history
         avg_train_loss = train_loss / len(train_loader)
         avg_val_loss = val_loss / len(val_loader)

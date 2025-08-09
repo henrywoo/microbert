@@ -53,7 +53,9 @@ class BertAttentionHead(torch.nn.Module):
         
         # Handle case where mask might be None
         if mask is not None:
-            weights = weights.masked_fill(~mask, -1e9)  # mask out not attended tokens
+            # Use a value compatible with float16 (Half) type
+            neg_inf = torch.finfo(weights.dtype).min
+            weights = weights.masked_fill(~mask, neg_inf)  # mask out not attended tokens
         
         scores = F.softmax(weights, dim=-1)
         scores = self.dropout(scores)
