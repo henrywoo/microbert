@@ -1,10 +1,10 @@
-# MicroBERT
+# 🚀 MicroBERT
 
 This project serves as an educational platform for learning BERT implementation, pretraining, and fine-tuning techniques. It offers a comprehensive framework that helps learners understand transformer architectures and training methodologies through hands-on experience.
 
 The project provides a lightweight BERT implementation with Masked Language Modeling (MLM) pre-training and Supervised Fine-Tuning (SFT) capabilities. It supports multiple datasets and streaming features, with multiple versions optimized for different GPU environments and learning objectives. It supports GPUs from entry-level (GTX 1060, GTX 1660, RTX 2060, RTX 3060, RTX 4060) to mid-range (RTX 2070, RTX 2080, RTX 3070, RTX 3080, RTX 4070, RTX 4080, RTX 4090, A10, A10G, H10, H20) to high-end enterprise (V100, A100, A100 80GB, H100, H200, B100, B200, L40, L40S), with automatic configuration adjustment based on available GPU memory and multi-GPU distributed training support.
 
-## Project Overview
+## 📁 Project Overview
 
 This educational project provides:
 
@@ -13,7 +13,7 @@ This educational project provides:
 - **GPU Environment Adaptation**: Optimized configurations for various GPU memory capacities
 - **Educational Resources**: Comprehensive examples for learning transformer architectures
 
-## Version Architecture
+## 🏗️ Version Architecture
 
 ### Pretraining Versions (v0-v4)
 
@@ -29,7 +29,7 @@ All versions are designed for **pretraining** with different optimizations:
 
 - **`sft_hfbert.py`**: Complete Supervised Fine-Tuning implementation for downstream tasks
 
-## Features
+## ✨ Features
 
 - 🚀 **Lightweight BERT**: Small, efficient BERT implementation
 - 📊 **Multiple Datasets**: Support for IMDB and Hugging Face datasets
@@ -40,7 +40,7 @@ All versions are designed for **pretraining** with different optimizations:
 - 🔧 **Flexible Configuration**: Easy model parameter tuning
 - 🎓 **Educational Focus**: Designed for learning transformer architectures
 
-## Installation
+## 🔧 Installation
 
 ### 1. Clone the repository
 ```bash
@@ -69,7 +69,7 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 🎯 **Choose the Right Training Script for Your Learning Goals**
 
@@ -198,42 +198,8 @@ python sft_hfbert.py
   - Fine-tuning training loop
   - Evaluation and inference
 
-## Project Structure
 
-```
-microbert/
-├── microbert/                    # Core package
-│   ├── __init__.py
-│   ├── model.py                 # BERT model implementation
-│   ├── tokenizer.py             # Word-level tokenizer
-│   └── utils.py                 # Utility functions
-├── mlm_pretrain_v0.py           # v0: Basic MLM training (Single GPU, Full Precision)
-├── mlm_pretrain_v1.py           # v1: Mixed precision MLM training (Single GPU, Mixed Precision)
-├── mlm_pretrain_v2.py           # v2: Medium model MLM training (Single GPU, Full Precision)
-├── mlm_pretrain_v3.py           # v3: Multi-GPU MLM training (Multi-GPU, Full Precision)
-├── mlm_pretrain_v4.py           # v4: Advanced multi-GPU MLM training (Multi-GPU, Mixed Precision)
-├── sft_hfbert.py                # SFT implementation for downstream tasks
-├── multi_gpu_configs.py         # Multi-GPU training configurations
-├── run_multi_gpu_training.sh    # Multi-GPU training launcher
-├── train_h200_8gpu_standard.sh  # H200 8-GPU standard training script
-├── train_h200_8gpu_v4.sh        # H200 8-GPU v4 optimized training script
-├── train_24gb_optimized.sh      # 24GB optimized training script
-├── model_config_comparison.py   # Model configuration comparison tool
-├── test_streaming.py            # Test streaming functionality
-├── test_cache.py                # Test caching functionality
-├── cache_manager.py             # Cache management utility
-├── demo_caching.py              # Caching demo
-├── requirements.txt             # Python dependencies
-├── requirements-minimal.txt     # Minimal dependencies
-├── setup.py                     # Package setup
-├── MULTI_GPU_USAGE.md           # Multi-GPU training guide
-├── DATASET_OPTIONS.md           # Dataset options documentation
-├── STREAMING_GUIDE.md           # Streaming and caching guide
-├── VERSION_COMPARISON.md        # Version comparison guide
-└── README.md                    # This file
-```
-
-## Usage Examples
+## 💡 Usage Examples
 
 ### 🎯 **v0: Basic Learning Training (IMDB Dataset)**
 
@@ -466,7 +432,7 @@ python cache_manager.py clear
 python cache_manager.py usage
 ```
 
-## 🎯 **Detailed Running Guide**
+## 📖 Detailed Running Guide
 
 ### **v0: Basic Learning Training**
 
@@ -733,7 +699,7 @@ Epoch 1/5: Train Loss: 5.2341 | Val Loss: 5.1234
 - **Distributed training**: Supports multi-GPU
 - **Automatic caching**: Intelligent data caching system
 
-## Model Configurations
+## ⚙️ Model Configurations
 
 The system automatically selects appropriate model configurations based on the dataset:
 
@@ -801,7 +767,7 @@ Run `python model_config_comparison.py` to view all configurations:
 | **v3: Multi-GPU** | 6 | 8 | 16 | ~182K | Distributed training, multi-GPU coordination |
 | **v4: Advanced Multi-GPU** | 8 | 8 | 256 | ~15M | Advanced distributed training, mixed precision |
 
-## Dataset Options
+## 📊 Dataset Options
 
 ### IMDB Dataset
 - **Size**: ~25K samples
@@ -816,7 +782,7 @@ Run `python model_config_comparison.py` to view all configurations:
 - **c4**: Common Crawl data (English)
 - **pile-cc**: Common Crawl data (large)
 
-## Caching System
+## 💾 Caching System
 
 The project includes an intelligent caching system:
 
@@ -828,7 +794,7 @@ The project includes an intelligent caching system:
   - Subsequent runs: Instant loading from cache
   - Disk usage: ~100-500MB vs ~1-10GB for local download
 
-## Training Output
+## 📈 Training Output
 
 ### Model Files
 - `mlm_model.pth`: Full MLM model weights
@@ -851,7 +817,7 @@ The project includes an intelligent caching system:
      can't: logit=1.524, prob=0.192071
 ```
 
-## Performance Tips
+## 💡 Performance Tips
 
 ### For Limited Resources
 - Use IMDB dataset (`mlm_pretrain_v1.py`)
@@ -867,7 +833,7 @@ The project includes an intelligent caching system:
 - Use smaller `max_samples` for quick testing
 - Monitor cache usage with `cache_manager.py`
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
@@ -913,7 +879,7 @@ The project includes an intelligent caching system:
 - For multi-GPU issues, check `MULTI_GPU_USAGE.md`
 - Test single GPU functionality before multi-GPU training
 
-## 📊 **Version Comparison Summary**
+## 📊 Version Comparison Summary
 
 | Feature | v0 (Basic) | v1 (Mixed Precision) | v2 (Medium Model) | v3 (Multi-GPU) | v4 (Advanced Multi-GPU) |
 |---------|-------------|----------------------|-------------------|-----------------|--------------------------|
@@ -932,7 +898,7 @@ The project includes an intelligent caching system:
 | **Sequence Length** | 128 | 128 | 128 | 128 | 256 |
 | **Vocabulary Size** | 10K | 10K | 10K | 10K | 25K |
 
-## 🎯 **Selection Recommendations**
+## 🎯 Selection Recommendations
 
 - **Beginners/Learning Fundamentals**: Use `v0` - Basic BERT implementation, low resource requirements
 - **Learning Optimization**: Use `v1` - Mixed precision training, optimization techniques
@@ -941,7 +907,7 @@ The project includes an intelligent caching system:
 - **Advanced Distributed Learning**: Use `v4` - Advanced multi-GPU, mixed precision, high memory utilization
 - **Learning Fine-tuning**: Use `sft_hfbert.py` - Complete SFT pipeline for downstream tasks
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -949,11 +915,11 @@ The project includes an intelligent caching system:
 4. Add tests if applicable
 5. Submit a pull request
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 - Based on the BERT architecture from "Attention Is All You Need"
 - Uses Hugging Face datasets and transformers libraries
