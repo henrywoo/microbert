@@ -7,7 +7,13 @@ import os
 import json
 import shutil
 import argparse
+import hashlib
 from pathlib import Path
+
+def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed):
+    """Generate cache key for dataset configuration - same logic as in training script"""
+    config_str = f"{ds_name}_{str(ds_kwargs)}_{max_samples}_{min_words}_{seed}"
+    return hashlib.md5(config_str.encode()).hexdigest()[:16]
 
 def show_cache_info(cache_dir=".dataset_cache"):
     """Show information about cached datasets"""
@@ -66,6 +72,35 @@ def show_cache_info(cache_dir=".dataset_cache"):
     print(f"  Total datasets: {len(cache_files)}")
     print(f"  Total samples: {total_samples:,}")
     print(f"  Total size: {total_size:,} bytes ({total_size/1024/1024:.1f} MB)")
+    print("=" * 60)
+
+def show_cache_key_info(ds_name, ds_kwargs, max_samples, min_words, seed, cache_dir=".dataset_cache"):
+    """Show information about a specific cache key and whether it exists"""
+    cache_key = generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed)
+    cache_file = os.path.join(cache_dir, f"{cache_key}.json")
+    
+    print("=" * 60)
+    print("CACHE KEY INFORMATION")
+    print("=" * 60)
+    print(f"Dataset: {ds_name}")
+    print(f"Arguments: {ds_kwargs}")
+    print(f"Max samples: {max_samples:,}")
+    print(f"Min words: {min_words}")
+    print(f"Seed: {seed}")
+    print(f"Generated cache key: {cache_key}")
+    print(f"Cache file: {cache_file}")
+    
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            print(f"✓ Cache HIT: Found {len(data):,} samples")
+            print(f"File size: {os.path.getsize(cache_file):,} bytes ({os.path.getsize(cache_file)/1024/1024:.1f} MB)")
+        except Exception as e:
+            print(f"✗ Cache file exists but cannot be read: {e}")
+    else:
+        print("✗ Cache MISS: File not found")
+    
     print("=" * 60)
 
 def clear_cache(cache_dir=".dataset_cache", confirm=True):
@@ -141,13 +176,20 @@ def show_cache_usage():
 
 def main():
     parser = argparse.ArgumentParser(description="Manage MicroBERT dataset cache")
-    parser.add_argument("action", choices=["info", "clear", "usage"], 
+    parser.add_argument("action", choices=["info", "clear", "usage", "key"], 
                        help="Action to perform")
     parser.add_argument("--cache-dir", default=".dataset_cache",
                        help="Cache directory (default: .dataset_cache)")
     parser.add_argument("--file", help="Specific cache file to clear (for clear action)")
     parser.add_argument("--no-confirm", action="store_true",
                        help="Skip confirmation prompt (for clear action)")
+    
+    # Cache key generation arguments
+    parser.add_argument("--ds-name", help="Dataset name for key generation")
+    parser.add_argument("--ds-kwargs", help="Dataset arguments as JSON string")
+    parser.add_argument("--max-samples", type=int, help="Max samples for key generation")
+    parser.add_argument("--min-words", type=int, default=5, help="Min words for key generation")
+    parser.add_argument("--seed", type=int, default=42, help="Seed for key generation")
     
     args = parser.parse_args()
     
@@ -160,6 +202,18 @@ def main():
             clear_cache(args.cache_dir, not args.no_confirm)
     elif args.action == "usage":
         show_cache_usage()
+    elif args.action == "key":
+        if not all([args.ds_name, args.max_samples]):
+            print("Error: --ds-name and --max-samples are required for key generation")
+            return
+        
+        try:
+            ds_kwargs = json.loads(args.ds_kwargs) if args.ds_kwargs else {}
+        except json.JSONDecodeError:
+            print("Error: --ds-kwargs must be valid JSON")
+            return
+        
+        show_cache_key_info(args.ds_name, ds_kwargs, args.max_samples, args.min_words, args.seed, args.cache_dir)
 
 if __name__ == '__main__':
     main()

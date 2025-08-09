@@ -224,9 +224,11 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
                             return combined_text
         return None
 
-    def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed, total_loaded=0):
-        """Generate a unique cache key for the dataset configuration"""
-        config_str = f"{ds_name}_{ds_kwargs}_{max_samples}_{min_words}_{seed}_{total_loaded}"
+    def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed):
+        """Generate cache key for dataset configuration - fixed to be consistent"""
+        import hashlib
+        # Remove total_loaded from cache key to make it consistent
+        config_str = f"{ds_name}_{ds_kwargs}_{max_samples}_{min_words}_{seed}"
         return hashlib.md5(config_str.encode()).hexdigest()[:16]
 
     def load_from_cache(cache_key):
@@ -268,15 +270,18 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
         print(f"Trying to load {ds_name} {ds_kwargs} (need {remaining_samples:,} more samples)...")
         
         try:
-            # Generate cache key for this specific dataset and remaining samples
-            cache_key = generate_cache_key(ds_name, ds_kwargs, remaining_samples, min_words, seed, total_loaded=total_samples)
+            # Generate cache key for this specific dataset - FIXED: use max_samples for consistency
+            cache_key = generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed)
             
             # Try to load from cache first
             cached_data = load_from_cache(cache_key)
             if cached_data is not None:
                 print(f"Loaded {len(cached_data)} samples from cache for {ds_name}")
-                all_data.extend(cached_data)
-                total_samples += len(cached_data)
+                # Only take what we need from cache
+                needed_samples = min(len(cached_data), remaining_samples)
+                all_data.extend(cached_data[:needed_samples])
+                total_samples += needed_samples
+                print(f"Used {needed_samples} samples from cache, total so far: {total_samples:,}")
                 continue
             
             # Load dataset from Hugging Face
