@@ -171,16 +171,29 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
 
     # 数据集与其可选配置（尽量选择公开可用、可流式，按大小排序）
     # 为了开发/测试，优先选择较小的数据集以避免磁盘空间问题
-    candidates = [
-        # (dataset_name, dict(kwargs_for_load_dataset))
-        ("wikitext",   {"name": "wikitext-103-raw-v1"}),  # ~1.8M tokens (smaller)
-        ("squad",      {}),  # Question answering dataset
-        ("imdb",       {}),  # Movie reviews
-        ("ag_news",    {}),  # News articles
-        ("yelp_polarity", {}),  # Yelp reviews
-        ("dbpedia_14", {}),  # Wikipedia articles
-        ("c4",         {"name": "en"}),  # Common Crawl data, very large (last resort)
-    ]
+    # 但如果max_samples很大，优先选择大数据集
+    if max_samples and max_samples > 1_000_000:  # 如果请求超过1M样本
+        candidates = [
+            # (dataset_name, dict(kwargs_for_load_dataset))
+            ("c4",         {"name": "en"}),  # Common Crawl data, very large (大数据集优先)
+            ("dbpedia_14", {}),  # Wikipedia articles
+            ("ag_news",    {}),  # News articles
+            ("yelp_polarity", {}),  # Yelp reviews
+            ("squad",      {}),  # Question answering dataset
+            ("imdb",       {}),  # Movie reviews
+            ("wikitext",   {"name": "wikitext-103-raw-v1"}),  # ~1.8M tokens (smaller, last resort)
+        ]
+    else:
+        candidates = [
+            # (dataset_name, dict(kwargs_for_load_dataset))
+            ("wikitext",   {"name": "wikitext-103-raw-v1"}),  # ~1.8M tokens (smaller)
+            ("squad",      {}),  # Question answering dataset
+            ("imdb",       {}),  # Movie reviews
+            ("ag_news",    {}),  # News articles
+            ("yelp_polarity", {}),  # Yelp reviews
+            ("dbpedia_14", {}),  # Wikipedia articles
+            ("c4",         {"name": "en"}),  # Common Crawl data, very large (last resort)
+        ]
 
     def extract_text(item: dict) -> str | None:
         # 按常见字段顺序取文本
