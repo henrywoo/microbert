@@ -176,12 +176,23 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
         candidates = [
             # (dataset_name, dict(kwargs_for_load_dataset))
             ("c4",         {"name": "en"}),  # Common Crawl data, very large (大数据集优先)
+            ("c4",         {"name": "en", "split": "train"}),  # Alternative C4 configuration
             ("dbpedia_14", {}),  # Wikipedia articles
             ("ag_news",    {}),  # News articles
             ("yelp_polarity", {}),  # Yelp reviews
+            ("yelp_review_full", {}),  # Full Yelp reviews (larger)
+            ("amazon_polarity", {}),  # Amazon reviews
+            ("amazon_reviews_multi", {"language": "en"}),  # Multi-language Amazon reviews
             ("squad",      {}),  # Question answering dataset
+            ("squad_v2",   {}),  # SQuAD v2 (larger)
             ("imdb",       {}),  # Movie reviews
-            ("wikitext",   {"name": "wikitext-103-raw-v1"}),  # ~1.8M tokens (smaller, last resort)
+            ("wikitext",   {"name": "wikitext-103-raw-v1"}),  # ~1.8M tokens
+            ("wikitext",   {"name": "wikitext-2-raw-v1"}),  # Alternative wikitext
+            ("bookcorpus", {}),  # Book corpus
+            ("openwebtext", {}),  # OpenWebText (if available)
+            ("wikipedia",  {"language": "en", "date": "20220301"}),  # Wikipedia articles
+            ("wikipedia",  {"language": "en", "date": "20221201"}),  # Alternative Wikipedia date
+            ("oscar",      {"language": "en", "split": "train"}),  # OSCAR corpus
         ]
     else:
         candidates = [
@@ -197,19 +208,27 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
 
     def extract_text(item: dict) -> str | None:
         # 按常见字段顺序取文本
-        for key in ("text", "content", "document", "article", "body", "raw_content", "source", "sentence"):
-            v = item.get(key, None)
-            if isinstance(v, str) and len(v.strip()) > 10:
-                return v
-        # 兜底：找任意较长字符串字段
-        for k, v in item.items():
-            if isinstance(v, str) and len(v.strip()) > 10:
-                return v
+        text_fields = [
+            'text', 'content', 'sentence', 'passage', 'article', 'question', 'context', 'title', 'summary',
+            'review', 'review_text', 'body', 'document', 'raw_content', 'source', 'comment', 'description',
+            'abstract', 'caption', 'transcript', 'utterance', 'dialogue', 'conversation', 'story', 'narrative'
+        ]
+        for field in text_fields:
+            if field in item and item[field]:
+                text = item[field]
+                if isinstance(text, str) and len(text.strip()) > 10:
+                    return text
+                elif isinstance(text, list) and len(text) > 0:
+                    # Handle list of strings
+                    if all(isinstance(t, str) for t in text):
+                        combined_text = ' '.join(text)
+                        if len(combined_text.strip()) > 10:
+                            return combined_text
         return None
 
-    def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed):
+    def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed, total_loaded=0):
         """Generate a unique cache key for the dataset configuration"""
-        config_str = f"{ds_name}_{ds_kwargs}_{max_samples}_{min_words}_{seed}"
+        config_str = f"{ds_name}_{ds_kwargs}_{max_samples}_{min_words}_{seed}_{total_loaded}"
         return hashlib.md5(config_str.encode()).hexdigest()[:16]
 
     def load_from_cache(cache_key):
@@ -238,17 +257,29 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
         except Exception as e:
             print(f"Failed to save cache: {e}")
 
+    # Try each dataset option sequentially until we reach max_samples
+    all_data = []
+    total_samples = 0
+    
     for ds_name, ds_kwargs in candidates:
-        try:
-            print(f"Trying to load {ds_name} {ds_kwargs} ...")
+        if total_samples >= max_samples:
+            print(f"Reached target sample count ({max_samples:,}), stopping dataset loading")
+            break
             
-            # Generate cache key
-            cache_key = generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed)
+        remaining_samples = max_samples - total_samples
+        print(f"Trying to load {ds_name} {ds_kwargs} (need {remaining_samples:,} more samples)...")
+        
+        try:
+            # Generate cache key for this specific dataset and remaining samples
+            cache_key = generate_cache_key(ds_name, ds_kwargs, remaining_samples, min_words, seed, total_loaded=total_samples)
             
             # Try to load from cache first
             cached_data = load_from_cache(cache_key)
             if cached_data is not None:
-                return cached_data, []
+                print(f"Loaded {len(cached_data)} samples from cache for {ds_name}")
+                all_data.extend(cached_data)
+                total_samples += len(cached_data)
+                continue
             
             # Load dataset from Hugging Face
             try:
@@ -305,50 +336,37 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
                 if len(tokens) >= min_words:
                     data.append({"text": tokens})
                     kept += 1
-                    if kept >= max_samples:
+                    if kept >= remaining_samples:
                         break
 
-            print(f"Successfully loaded {kept} samples from {ds_name}")
-            
-            # Save to cache for future use
-            save_to_cache(data, cache_key)
-            
-            return data, []  # MLM 无需单独 test 集
+            if data:
+                print(f"Successfully loaded {kept} samples from {ds_name}")
+                
+                # Save to cache for future use
+                save_to_cache(data, cache_key)
+                
+                # Add to total data
+                all_data.extend(data)
+                total_samples += len(data)
+                
+                print(f"Total samples so far: {total_samples:,}/{max_samples:,}")
+                
+                if total_samples >= max_samples:
+                    print(f"Reached target sample count ({max_samples:,}), stopping dataset loading")
+                    break
+            else:
+                print(f"No valid samples found in {ds_name}")
 
         except Exception as e:
             print(f"Failed to load {ds_name}: {e}")
             continue
 
-    # 全部失败时，回退到 IMDB 的版本
-    print("All loading attempts failed. Falling back to IMDB...")
-    try:
-        # Try to load IMDB from cache first
-        imdb_cache_key = generate_cache_key("imdb", {}, max_samples, min_words, seed)
-        cached_data = load_from_cache(imdb_cache_key)
-        if cached_data is not None:
-            return cached_data, []
-        
-        ds = load_dataset("imdb", split="train", streaming=streaming)
-        data = []
-        for item in ds:
-            text = item.get("text", "")
-            if isinstance(text, str) and len(text.strip()) > 10:
-                tokens = text.strip().lower().split()
-                if len(tokens) >= min_words:
-                    data.append({"text": tokens})
-                    if len(data) >= max_samples:
-                        break
-        
-        print(f"Loaded {len(data)} samples from IMDB")
-        
-        # Save IMDB to cache
-        save_to_cache(data, imdb_cache_key)
-        
-        return data, []
-    except Exception as e:
-        print(f"Failed to load IMDB as well: {e}")
-        # 保持与原函数兼容：如果你有本地的 load_imdb_data()，可以在此调用
-        return [], []
+    if all_data:
+        print(f"Successfully loaded {len(all_data):,} total samples from multiple datasets")
+        return all_data, []
+    else:
+        print("Failed to load any datasets, falling back to IMDB")
+        return load_imdb_data()
 
 
 def load_text_data(dataset_choice='imdb', streaming=True, max_samples=None):

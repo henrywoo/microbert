@@ -219,30 +219,64 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     
     # Define dataset options in order of preference (larger datasets first)
     # For development/testing, prefer smaller datasets to avoid disk space issues
-    dataset_options = [
-        {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens (smaller)
-        {'name': 'squad', 'kwargs': {}},  # Question answering dataset
-        {'name': 'imdb', 'kwargs': {}},  # Movie reviews
-        {'name': 'ag_news', 'kwargs': {}},  # News articles
-        {'name': 'yelp_polarity', 'kwargs': {}},  # Yelp reviews
-        {'name': 'dbpedia_14', 'kwargs': {}},  # Wikipedia articles
-        {'name': 'c4', 'kwargs': {'name': 'en'}},  # Common Crawl data, very large (last resort)
-    ]
+    # But if max_samples is high, prioritize larger datasets
+    if max_samples and max_samples > 1_000_000:  # If requesting more than 1M samples
+        dataset_options = [
+            {'name': 'c4', 'kwargs': {'name': 'en'}},  # Common Crawl data, very large (first choice for large samples)
+            {'name': 'c4', 'kwargs': {'name': 'en', 'split': 'train'}},  # Alternative C4 configuration
+            {'name': 'dbpedia_14', 'kwargs': {}},  # Wikipedia articles
+            {'name': 'ag_news', 'kwargs': {}},  # News articles
+            {'name': 'yelp_polarity', 'kwargs': {}},  # Yelp reviews
+            {'name': 'yelp_review_full', 'kwargs': {}},  # Full Yelp reviews (larger)
+            {'name': 'amazon_polarity', 'kwargs': {}},  # Amazon reviews
+            {'name': 'amazon_reviews_multi', 'kwargs': {'language': 'en'}},  # Multi-language Amazon reviews
+            {'name': 'squad', 'kwargs': {}},  # Question answering dataset
+            {'name': 'squad_v2', 'kwargs': {}},  # SQuAD v2 (larger)
+            {'name': 'imdb', 'kwargs': {}},  # Movie reviews
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-2-raw-v1'}},  # Alternative wikitext
+            {'name': 'bookcorpus', 'kwargs': {}},  # Book corpus
+            {'name': 'openwebtext', 'kwargs': {}},  # OpenWebText (if available)
+            {'name': 'wikipedia', 'kwargs': {'language': 'en', 'date': '20220301'}},  # Wikipedia articles
+            {'name': 'wikipedia', 'kwargs': {'language': 'en', 'date': '20221201'}},  # Alternative Wikipedia date
+            {'name': 'oscar', 'kwargs': {'language': 'en', 'split': 'train'}},  # OSCAR corpus
+            {'name': 'oscar', 'kwargs': {'language': 'en', 'split': 'train', 'cache_dir': cache_dir}},  # OSCAR with cache
+        ]
+    else:
+        dataset_options = [
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens (smaller)
+            {'name': 'squad', 'kwargs': {}},  # Question answering dataset
+            {'name': 'imdb', 'kwargs': {}},  # Movie reviews
+            {'name': 'ag_news', 'kwargs': {}},  # News articles
+            {'name': 'yelp_polarity', 'kwargs': {}},  # Yelp reviews
+            {'name': 'dbpedia_14', 'kwargs': {}},  # Wikipedia articles
+            {'name': 'c4', 'kwargs': {'name': 'en'}},  # Common Crawl data, very large (last resort)
+        ]
     
     def extract_text(item: dict) -> str | None:
         # 按常见字段顺序取文本
-        text_fields = ['text', 'content', 'sentence', 'passage', 'article', 'question', 'context', 'title', 'summary']
+        text_fields = [
+            'text', 'content', 'sentence', 'passage', 'article', 'question', 'context', 'title', 'summary',
+            'review', 'review_text', 'body', 'document', 'raw_content', 'source', 'comment', 'description',
+            'abstract', 'caption', 'transcript', 'utterance', 'dialogue', 'conversation', 'story', 'narrative'
+        ]
         for field in text_fields:
             if field in item and item[field]:
                 text = item[field]
                 if isinstance(text, str) and len(text.strip()) > 10:
                     return text
+                elif isinstance(text, list) and len(text) > 0:
+                    # Handle list of strings
+                    if all(isinstance(t, str) for t in text):
+                        combined_text = ' '.join(text)
+                        if len(combined_text.strip()) > 10:
+                            return combined_text
         return None
     
-    def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed):
+    def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed, total_loaded=0):
         """Generate cache key for dataset configuration"""
         import hashlib
-        config_str = f"{ds_name}_{str(ds_kwargs)}_{max_samples}_{min_words}_{seed}"
+        config_str = f"{ds_name}_{str(ds_kwargs)}_{max_samples}_{min_words}_{seed}_{total_loaded}"
         return hashlib.md5(config_str.encode()).hexdigest()[:16]
     
     def load_from_cache(cache_key):
@@ -270,33 +304,40 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
             print(f"Failed to save cache: {e}")
             return False
     
-    # Try each dataset option
+    # Try each dataset option sequentially until we reach max_samples
+    all_data = []
+    total_samples = 0
+    
     for ds_option in dataset_options:
+        if total_samples >= max_samples:
+            print(f"Reached target sample count ({max_samples:,}), stopping dataset loading")
+            break
+            
         ds_name = ds_option['name']
         ds_kwargs = ds_option['kwargs']
         
-        print(f"Trying to load {ds_name} {ds_kwargs} ...")
+        remaining_samples = max_samples - total_samples
+        print(f"Trying to load {ds_name} {ds_kwargs} (need {remaining_samples:,} more samples)...")
         
         try:
-            # Generate cache key
-            cache_key = generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed)
+            # Generate cache key for this specific dataset and remaining samples
+            cache_key = generate_cache_key(ds_name, ds_kwargs, remaining_samples, min_words, seed, total_loaded=total_samples)
             
             # Try to load from cache first
             cached_data = load_from_cache(cache_key)
             if cached_data:
-                return cached_data, []
+                print(f"Loaded {len(cached_data)} samples from cache for {ds_name}")
+                all_data.extend(cached_data)
+                total_samples += len(cached_data)
+                continue
             
             # Load dataset
             if streaming:
                 try:
                     dataset = load_dataset(ds_name, **ds_kwargs, streaming=True, split='train')
-                    # Apply streaming shuffle
-                    dataset = dataset.shuffle(seed=seed, buffer_size=10_000)
-                    print("Applied streaming shuffle with buffer_size=10_000")
                     print(f"Dataset {ds_name} loaded in streaming mode")
                 except Exception as e:
                     print(f"Streaming mode failed for {ds_name}: {e}")
-                    # Try non-streaming mode as fallback
                     print(f"Trying non-streaming mode for {ds_name}...")
                     dataset = load_dataset(ds_name, **ds_kwargs, split='train')
                     print(f"Dataset {ds_name} loaded with {len(dataset)} total samples")
@@ -311,7 +352,7 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
             if streaming:
                 # For streaming datasets, we need to iterate
                 for item in dataset:
-                    if sample_count >= max_samples:
+                    if sample_count >= remaining_samples:
                         break
                     
                     text = extract_text(item)
@@ -320,11 +361,11 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
                         sample_count += 1
                         
                         if sample_count % 10000 == 0:
-                            print(f"Processed {sample_count} samples...")
+                            print(f"Processed {sample_count} samples from {ds_name}...")
             else:
                 # For non-streaming datasets, we can process all at once
                 for item in dataset:
-                    if sample_count >= max_samples:
+                    if sample_count >= remaining_samples:
                         break
                     
                     text = extract_text(item)
@@ -338,7 +379,15 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
                 # Save to cache
                 save_to_cache(data, cache_key)
                 
-                return data, []
+                # Add to total data
+                all_data.extend(data)
+                total_samples += len(data)
+                
+                print(f"Total samples so far: {total_samples:,}/{max_samples:,}")
+                
+                if total_samples >= max_samples:
+                    print(f"Reached target sample count ({max_samples:,}), stopping dataset loading")
+                    break
             else:
                 print(f"No valid samples found in {ds_name}")
                 
@@ -346,8 +395,12 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
             print(f"Failed to load {ds_name}: {e}")
             continue
     
-    print("Failed to load any Hugging Face dataset, falling back to IMDB")
-    return load_imdb_data()
+    if all_data:
+        print(f"Successfully loaded {len(all_data):,} total samples from multiple datasets")
+        return all_data, []
+    else:
+        print("Failed to load any datasets, falling back to IMDB")
+        return load_imdb_data()
 
 
 def load_text_data(dataset_choice='imdb', streaming=True, max_samples=None):

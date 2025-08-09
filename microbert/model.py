@@ -14,9 +14,16 @@ class BertEmbeddings(torch.nn.Module):
         self.dropout = torch.nn.Dropout(p=0.1, inplace=False)
 
     def forward(self, x):
-        # Create position IDs based on actual sequence length
+        # Create position IDs based on actual sequence length, but ensure they don't exceed max_seq_len
         seq_len = x.size(1)
         position_ids = torch.arange(seq_len, dtype=torch.long, device=x.device)
+        # Ensure position_ids don't exceed max_seq_len
+        position_ids = torch.clamp(position_ids, 0, self.max_seq_len - 1)
+        
+        # Ensure input_ids don't exceed vocab_size
+        vocab_size = self.word_embeddings.num_embeddings
+        x = torch.clamp(x, 0, vocab_size - 1)
+        
         words_embeddings = self.word_embeddings(x)
         position_embeddings = self.pos_embeddings(position_ids)
         embeddings = words_embeddings + position_embeddings

@@ -161,7 +161,8 @@ class MLMDataset(Dataset):
         for pos in masked_positions:
             # 80% chance to replace with [MASK]
             if random.random() < 0.8:
-                input_ids[pos] = self.tokenizer.vocab['[MASK]']
+                mask_token_id = self.tokenizer.vocab.get('[MASK]', 0)
+                input_ids[pos] = mask_token_id
             # 10% chance to replace with random word
             elif random.random() < 0.5:
                 # Ensure the random token ID is within valid range
@@ -169,6 +170,10 @@ class MLMDataset(Dataset):
                 input_ids[pos] = random_token_id
             # 10% chance to keep original
             # (labels already contain original)
+        
+        # Final validation - ensure all token IDs are within bounds
+        input_ids = torch.clamp(input_ids, 0, vocab_size - 1)
+        labels = torch.clamp(labels, -100, vocab_size - 1)
         
         return input_ids, labels
 
@@ -223,12 +228,24 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     if max_samples and max_samples > 1_000_000:  # If requesting more than 1M samples
         dataset_options = [
             {'name': 'c4', 'kwargs': {'name': 'en'}},  # Common Crawl data, very large (first choice for large samples)
+            {'name': 'c4', 'kwargs': {'name': 'en', 'split': 'train'}},  # Alternative C4 configuration
             {'name': 'dbpedia_14', 'kwargs': {}},  # Wikipedia articles
             {'name': 'ag_news', 'kwargs': {}},  # News articles
             {'name': 'yelp_polarity', 'kwargs': {}},  # Yelp reviews
+            {'name': 'yelp_review_full', 'kwargs': {}},  # Full Yelp reviews (larger)
+            {'name': 'amazon_polarity', 'kwargs': {}},  # Amazon reviews
+            {'name': 'amazon_reviews_multi', 'kwargs': {'language': 'en'}},  # Multi-language Amazon reviews
             {'name': 'squad', 'kwargs': {}},  # Question answering dataset
+            {'name': 'squad_v2', 'kwargs': {}},  # SQuAD v2 (larger)
             {'name': 'imdb', 'kwargs': {}},  # Movie reviews
-            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens (smaller, last resort)
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-2-raw-v1'}},  # Alternative wikitext
+            {'name': 'bookcorpus', 'kwargs': {}},  # Book corpus
+            {'name': 'openwebtext', 'kwargs': {}},  # OpenWebText (if available)
+            {'name': 'wikipedia', 'kwargs': {'language': 'en', 'date': '20220301'}},  # Wikipedia articles
+            {'name': 'wikipedia', 'kwargs': {'language': 'en', 'date': '20221201'}},  # Alternative Wikipedia date
+            {'name': 'oscar', 'kwargs': {'language': 'en', 'split': 'train'}},  # OSCAR corpus
+            {'name': 'oscar', 'kwargs': {'language': 'en', 'split': 'train', 'cache_dir': cache_dir}},  # OSCAR with cache
         ]
     else:
         dataset_options = [
@@ -243,12 +260,22 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     
     def extract_text(item: dict) -> str | None:
         # 按常见字段顺序取文本
-        text_fields = ['text', 'content', 'sentence', 'passage', 'article', 'question', 'context', 'title', 'summary']
+        text_fields = [
+            'text', 'content', 'sentence', 'passage', 'article', 'question', 'context', 'title', 'summary',
+            'review', 'review_text', 'body', 'document', 'raw_content', 'source', 'comment', 'description',
+            'abstract', 'caption', 'transcript', 'utterance', 'dialogue', 'conversation', 'story', 'narrative'
+        ]
         for field in text_fields:
             if field in item and item[field]:
                 text = item[field]
                 if isinstance(text, str) and len(text.strip()) > 10:
                     return text
+                elif isinstance(text, list) and len(text) > 0:
+                    # Handle list of strings
+                    if all(isinstance(t, str) for t in text):
+                        combined_text = ' '.join(text)
+                        if len(combined_text.strip()) > 10:
+                            return combined_text
         return None
     
     def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed, total_loaded=0):
@@ -720,7 +747,7 @@ def main():
             
             # Create our own tokenizer
             from microbert.tokenizer import WordTokenizer
-            tokenizer = WordTokenizer(vocab=vocab_list, max_seq_len=256)  # Optimized for 24GB memory
+            tokenizer = WordTokenizer(vocab=vocab_list, max_seq_len=128)  # Match MLMDataset max_length
             
             # Save tokenizer for other processes
             torch.save(tokenizer, '.temp_tokenizer.pth')
