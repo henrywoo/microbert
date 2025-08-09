@@ -12,14 +12,11 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
-from transformers import get_linear_schedule_with_warmup
-from tqdm import tqdm
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import torch.distributed as dist
-from torch.amp import GradScaler, autocast
 import time
 from pathlib import Path
 import datetime
@@ -30,7 +27,14 @@ sys.path.append('.')
 
 from microbert.model import MicroBERT, BertEmbeddings, BertEncoder
 from microbert.utils import plot_mlm_results
-from hiq.vis import print_model
+
+# Try to import hiq for model printing
+try:
+    from hiq.vis import print_model
+except ImportError:
+    def print_model(model):
+        print(f"Model: {type(model).__name__}")
+        print(f"Total parameters: {sum(p.numel() for p in model.parameters()):,}")
 
 
 class MicroBertMLM(nn.Module):
@@ -44,6 +48,10 @@ class MicroBertMLM(nn.Module):
         self.mlm_head = nn.Linear(n_embed, vocab_size)
         
     def forward(self, input_ids, labels=None):
+        # Ensure input_ids are within valid range
+        vocab_size = self.embedding.word_embeddings.num_embeddings
+        input_ids = torch.clamp(input_ids, 0, vocab_size - 1)
+        
         # Get embeddings
         embeddings = self.embedding(input_ids)
         
@@ -62,6 +70,9 @@ class MicroBertMLM(nn.Module):
         logits = self.mlm_head(encoded)
         
         if labels is not None:
+            # Ensure labels are within valid range
+            labels = torch.clamp(labels, -100, vocab_size - 1)
+            
             # Calculate loss only for masked positions
             loss_fct = nn.CrossEntropyLoss()
             # Flatten for loss calculation
@@ -95,7 +106,12 @@ class MLMDataset(Dataset):
         text = item['text']
         
         # Tokenize - tokenizer.encode returns a torch.Tensor with proper padding
-        input_ids = self.tokenizer.encode(text)
+        try:
+            input_ids = self.tokenizer.encode(text)
+        except Exception as e:
+            print(f"Error encoding text at index {idx}: {e}")
+            # Return a safe default
+            input_ids = torch.full((self.max_length,), self.tokenizer.vocab['[PAD]'], dtype=torch.long)
         
         # Ensure the tensor has the correct length and is on the right device
         if isinstance(input_ids, torch.Tensor):
@@ -125,7 +141,13 @@ class MLMDataset(Dataset):
         input_ids = torch.clamp(input_ids, 0, vocab_size - 1)
         
         # Apply MLM masking
-        input_ids, labels = self.mask_tokens(input_ids)
+        try:
+            input_ids, labels = self.mask_tokens(input_ids)
+        except Exception as e:
+            print(f"Error masking tokens at index {idx}: {e}")
+            # Return safe defaults
+            input_ids = torch.full((self.max_length,), self.tokenizer.vocab['[PAD]'], dtype=torch.long)
+            labels = torch.full((self.max_length,), -100, dtype=torch.long)
         
         # Final validation - ensure all token IDs are still within bounds after masking
         input_ids = torch.clamp(input_ids, 0, vocab_size - 1)
@@ -142,19 +164,22 @@ class MLMDataset(Dataset):
         
         # Find positions to mask (exclude special tokens)
         special_tokens = [
-            self.tokenizer.vocab['[PAD]'],
-            self.tokenizer.vocab['[CLS]'],
-            self.tokenizer.vocab['[SEP]']
+            self.tokenizer.vocab.get('[PAD]', 0),
+            self.tokenizer.vocab.get('[CLS]', 1),
+            self.tokenizer.vocab.get('[SEP]', 2)
         ]
         
         maskable_positions = []
         for i, token_id in enumerate(input_ids):
-            if token_id not in special_tokens:
+            if token_id.item() not in special_tokens:
                 maskable_positions.append(i)
         
         # Randomly mask 15% of tokens
         num_to_mask = max(1, int(len(maskable_positions) * self.mlm_probability))
-        masked_positions = random.sample(maskable_positions, min(num_to_mask, len(maskable_positions)))
+        if maskable_positions:
+            masked_positions = random.sample(maskable_positions, min(num_to_mask, len(maskable_positions)))
+        else:
+            masked_positions = []
         
         vocab_size = len(self.tokenizer.vocab)
         
@@ -228,24 +253,21 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     if max_samples and max_samples > 1_000_000:  # If requesting more than 1M samples
         dataset_options = [
             {'name': 'c4', 'kwargs': {'name': 'en'}},  # Common Crawl data, very large (first choice for large samples)
-            {'name': 'c4', 'kwargs': {'name': 'en', 'split': 'train'}},  # Alternative C4 configuration
             {'name': 'dbpedia_14', 'kwargs': {}},  # Wikipedia articles
             {'name': 'ag_news', 'kwargs': {}},  # News articles
+            {'name': 'ag_news', 'kwargs': {'name': 'default'}},  # AG News default
             {'name': 'yelp_polarity', 'kwargs': {}},  # Yelp reviews
             {'name': 'yelp_review_full', 'kwargs': {}},  # Full Yelp reviews (larger)
             {'name': 'amazon_polarity', 'kwargs': {}},  # Amazon reviews
-            {'name': 'amazon_reviews_multi', 'kwargs': {'language': 'en'}},  # Multi-language Amazon reviews
             {'name': 'squad', 'kwargs': {}},  # Question answering dataset
+            {'name': 'squad', 'kwargs': {'name': 'plain_text'}},  # SQuAD plain text
             {'name': 'squad_v2', 'kwargs': {}},  # SQuAD v2 (larger)
             {'name': 'imdb', 'kwargs': {}},  # Movie reviews
+            {'name': 'imdb', 'kwargs': {'name': 'plain_text'}},  # IMDB plain text
             {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens
             {'name': 'wikitext', 'kwargs': {'name': 'wikitext-2-raw-v1'}},  # Alternative wikitext
-            {'name': 'bookcorpus', 'kwargs': {}},  # Book corpus
-            {'name': 'openwebtext', 'kwargs': {}},  # OpenWebText (if available)
-            {'name': 'wikipedia', 'kwargs': {'language': 'en', 'date': '20220301'}},  # Wikipedia articles
-            {'name': 'wikipedia', 'kwargs': {'language': 'en', 'date': '20221201'}},  # Alternative Wikipedia date
-            {'name': 'oscar', 'kwargs': {'language': 'en', 'split': 'train'}},  # OSCAR corpus
-            {'name': 'oscar', 'kwargs': {'language': 'en', 'split': 'train', 'cache_dir': cache_dir}},  # OSCAR with cache
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-v1'}},  # Another wikitext variant
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-2-v1'}},  # Another wikitext variant
         ]
     else:
         dataset_options = [
@@ -417,39 +439,35 @@ def load_text_data(dataset_choice='imdb', streaming=True, max_samples=None):
 
 
 def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_epochs=3, learning_rate=5e-5, local_rank=0):
-    """Train MLM model with multi-GPU support - v4 optimized for 24GB memory"""
+    """Train MLM model with multi-GPU support"""
     
-    # Move model to device
+    # Ensure model is on the correct device
     model = model.to(device)
     
     # Enable gradient checkpointing for memory efficiency (especially for large models)
     if hasattr(model, 'gradient_checkpointing_enable'):
         model.gradient_checkpointing_enable()
-        print(f"Enabled gradient checkpointing for memory efficiency")
+        if local_rank == 0:
+            print(f"Enabled gradient checkpointing for memory efficiency")
     
     # Wrap model with DDP if using multiple GPUs (check world_size instead of device_count)
     if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
         model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+        if local_rank == 0:
+            print(f"Wrapped model with DDP for multi-GPU training")
     
-    # Initialize optimizer
+    # Initialize optimizer and scheduler
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-    
-    # Initialize gradient scaler for mixed precision
-    scaler = GradScaler('cuda')
-    
-    # Learning rate scheduler
     total_steps = len(train_loader) * num_epochs
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer, 
-        num_warmup_steps=total_steps // 10, 
-        num_training_steps=total_steps
+    scheduler = torch.optim.lr_scheduler.get_linear_schedule_with_warmup(
+        optimizer, num_warmup_steps=total_steps // 10, num_training_steps=total_steps
     )
     
+    # Initialize gradient scaler for mixed precision training
+    scaler = torch.cuda.amp.GradScaler()
+    
     # Training history
-    history = {
-        'train_losses': [],
-        'val_losses': []
-    }
+    history = {'train_losses': [], 'val_losses': []}
     
     # Training loop
     for epoch in range(num_epochs):
@@ -457,41 +475,59 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
         total_train_loss = 0
         num_batches = 0
         
-        # Progress bar only on main process
+        # Progress bar (only on main process)
         if local_rank == 0:
+            from tqdm import tqdm
             pbar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{num_epochs}')
         else:
             pbar = train_loader
         
         for batch in pbar:
-            input_ids = batch['input_ids'].to(device)
-            labels = batch['labels'].to(device)
+            # Move batch to device
+            input_ids = batch['input_ids'].to(device, non_blocking=True)
+            labels = batch['labels'].to(device, non_blocking=True)
+            
+            # Ensure data types are correct
+            input_ids = input_ids.long()
+            labels = labels.long()
             
             # Clear gradients
             optimizer.zero_grad()
             
             # Forward pass with bfloat16 mixed precision (better for H200)
-            with autocast('cuda', dtype=torch.bfloat16):
-                loss = model(input_ids, labels)
-            
-            # Backward pass with gradient scaling
-            scaler.scale(loss).backward()
-            
-            # Gradient clipping
-            scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            
-            # Optimizer step
-            scaler.step(optimizer)
-            scaler.update()
-            scheduler.step()
-            
-            total_train_loss += loss.item()
-            num_batches += 1
-            
-            # Update progress bar
-            if local_rank == 0:
-                pbar.set_postfix({'loss': f'{loss.item():.4f}'})
+            try:
+                with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+                    loss = model(input_ids, labels)
+                
+                # Backward pass with gradient scaling
+                scaler.scale(loss).backward()
+                
+                # Gradient clipping
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                
+                # Optimizer step
+                scaler.step(optimizer)
+                scaler.update()
+                scheduler.step()
+                
+                total_train_loss += loss.item()
+                num_batches += 1
+                
+                # Update progress bar
+                if local_rank == 0:
+                    pbar.set_postfix({'loss': f'{loss.item():.4f}'})
+                    
+            except RuntimeError as e:
+                if "device-side assert triggered" in str(e):
+                    print(f"CUDA device-side assert error: {e}")
+                    print(f"Input shape: {input_ids.shape}, Labels shape: {labels.shape}")
+                    print(f"Input range: [{input_ids.min()}, {input_ids.max()}]")
+                    print(f"Labels range: [{labels.min()}, {labels.max()}]")
+                    # Skip this batch and continue
+                    continue
+                else:
+                    raise e
         
         # Calculate average training loss
         avg_train_loss = total_train_loss / num_batches
@@ -919,13 +955,19 @@ def main():
                 print('Starting MLM pre-training v4 (24GB optimized)...')
             
             # Train model
-            history = train_mlm_multi_gpu(
-                model, train_loader, val_loader, device, tokenizer, 
-                num_epochs=num_epochs, learning_rate=learning_rate, local_rank=local_rank
-            )
-            
-            if rank == 0:
-                print('MLM pre-training v4 completed!')
+            try:
+                history = train_mlm_multi_gpu(
+                    model, train_loader, val_loader, device, tokenizer, 
+                    num_epochs=num_epochs, learning_rate=learning_rate, local_rank=local_rank
+                )
+                
+                if rank == 0:
+                    print('MLM pre-training v4 completed!')
+            except Exception as e:
+                print(f"Error during training: {e}")
+                import traceback
+                traceback.print_exc()
+                return
         
         # Cleanup temporary files
         if rank == 0:

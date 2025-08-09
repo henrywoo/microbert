@@ -176,23 +176,21 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
         candidates = [
             # (dataset_name, dict(kwargs_for_load_dataset))
             ("c4",         {"name": "en"}),  # Common Crawl data, very large (大数据集优先)
-            ("c4",         {"name": "en", "split": "train"}),  # Alternative C4 configuration
             ("dbpedia_14", {}),  # Wikipedia articles
             ("ag_news",    {}),  # News articles
+            ("ag_news",    {"name": "default"}),  # AG News default
             ("yelp_polarity", {}),  # Yelp reviews
             ("yelp_review_full", {}),  # Full Yelp reviews (larger)
             ("amazon_polarity", {}),  # Amazon reviews
-            ("amazon_reviews_multi", {"language": "en"}),  # Multi-language Amazon reviews
             ("squad",      {}),  # Question answering dataset
+            ("squad",      {"name": "plain_text"}),  # SQuAD plain text
             ("squad_v2",   {}),  # SQuAD v2 (larger)
             ("imdb",       {}),  # Movie reviews
+            ("imdb",       {"name": "plain_text"}),  # IMDB plain text
             ("wikitext",   {"name": "wikitext-103-raw-v1"}),  # ~1.8M tokens
             ("wikitext",   {"name": "wikitext-2-raw-v1"}),  # Alternative wikitext
-            ("bookcorpus", {}),  # Book corpus
-            ("openwebtext", {}),  # OpenWebText (if available)
-            ("wikipedia",  {"language": "en", "date": "20220301"}),  # Wikipedia articles
-            ("wikipedia",  {"language": "en", "date": "20221201"}),  # Alternative Wikipedia date
-            ("oscar",      {"language": "en", "split": "train"}),  # OSCAR corpus
+            ("wikitext",   {"name": "wikitext-103-v1"}),  # Another wikitext variant
+            ("wikitext",   {"name": "wikitext-2-v1"}),  # Another wikitext variant
         ]
     else:
         candidates = [

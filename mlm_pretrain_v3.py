@@ -223,24 +223,21 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     if max_samples and max_samples > 1_000_000:  # If requesting more than 1M samples
         dataset_options = [
             {'name': 'c4', 'kwargs': {'name': 'en'}},  # Common Crawl data, very large (first choice for large samples)
-            {'name': 'c4', 'kwargs': {'name': 'en', 'split': 'train'}},  # Alternative C4 configuration
             {'name': 'dbpedia_14', 'kwargs': {}},  # Wikipedia articles
             {'name': 'ag_news', 'kwargs': {}},  # News articles
+            {'name': 'ag_news', 'kwargs': {'name': 'default'}},  # AG News default
             {'name': 'yelp_polarity', 'kwargs': {}},  # Yelp reviews
             {'name': 'yelp_review_full', 'kwargs': {}},  # Full Yelp reviews (larger)
             {'name': 'amazon_polarity', 'kwargs': {}},  # Amazon reviews
-            {'name': 'amazon_reviews_multi', 'kwargs': {'language': 'en'}},  # Multi-language Amazon reviews
             {'name': 'squad', 'kwargs': {}},  # Question answering dataset
+            {'name': 'squad', 'kwargs': {'name': 'plain_text'}},  # SQuAD plain text
             {'name': 'squad_v2', 'kwargs': {}},  # SQuAD v2 (larger)
             {'name': 'imdb', 'kwargs': {}},  # Movie reviews
+            {'name': 'imdb', 'kwargs': {'name': 'plain_text'}},  # IMDB plain text
             {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens
             {'name': 'wikitext', 'kwargs': {'name': 'wikitext-2-raw-v1'}},  # Alternative wikitext
-            {'name': 'bookcorpus', 'kwargs': {}},  # Book corpus
-            {'name': 'openwebtext', 'kwargs': {}},  # OpenWebText (if available)
-            {'name': 'wikipedia', 'kwargs': {'language': 'en', 'date': '20220301'}},  # Wikipedia articles
-            {'name': 'wikipedia', 'kwargs': {'language': 'en', 'date': '20221201'}},  # Alternative Wikipedia date
-            {'name': 'oscar', 'kwargs': {'language': 'en', 'split': 'train'}},  # OSCAR corpus
-            {'name': 'oscar', 'kwargs': {'language': 'en', 'split': 'train', 'cache_dir': cache_dir}},  # OSCAR with cache
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-v1'}},  # Another wikitext variant
+            {'name': 'wikitext', 'kwargs': {'name': 'wikitext-2-v1'}},  # Another wikitext variant
         ]
     else:
         dataset_options = [
