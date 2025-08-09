@@ -91,17 +91,31 @@ class MLMDataset(Dataset):
         item = self.data[idx]
         text = item['text']
         
-        # Tokenize
-        tokens = self.tokenizer.encode(text)
+        # Tokenize - tokenizer.encode returns a torch.Tensor with proper padding
+        input_ids = self.tokenizer.encode(text)
         
-        # Truncate or pad
-        if len(tokens) > self.max_length:
-            tokens = tokens[:self.max_length]
+        # Ensure the tensor has the correct length and is on the right device
+        if isinstance(input_ids, torch.Tensor):
+            # If the tokenizer returned a tensor, ensure it has the correct length
+            if len(input_ids) != self.max_length:
+                if len(input_ids) > self.max_length:
+                    input_ids = input_ids[:self.max_length]
+                else:
+                    # Pad with [PAD] tokens
+                    pad_length = self.max_length - len(input_ids)
+                    pad_tokens = torch.full((pad_length,), self.tokenizer.vocab['[PAD]'], dtype=torch.long)
+                    input_ids = torch.cat([input_ids, pad_tokens])
         else:
-            tokens = tokens + [self.tokenizer.vocab['[PAD]']] * (self.max_length - len(tokens))
-        
-        # Convert to tensor
-        input_ids = torch.tensor(tokens, dtype=torch.long)
+            # If tokenizer returned something else, convert to tensor
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+            if len(input_ids) != self.max_length:
+                if len(input_ids) > self.max_length:
+                    input_ids = input_ids[:self.max_length]
+                else:
+                    # Pad with [PAD] tokens
+                    pad_length = self.max_length - len(input_ids)
+                    pad_tokens = torch.full((pad_length,), self.tokenizer.vocab['[PAD]'], dtype=torch.long)
+                    input_ids = torch.cat([input_ids, pad_tokens])
         
         # Apply MLM masking
         input_ids, labels = self.mask_tokens(input_ids)
