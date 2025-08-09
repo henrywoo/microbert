@@ -19,7 +19,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import torch.distributed as dist
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler
+from torch.cuda.amp import autocast
 import time
 from pathlib import Path
 import datetime
@@ -339,13 +340,17 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
     
     # Wrap model with DDP if using multiple GPUs
     if torch.cuda.device_count() > 1:
+        # Ensure local_rank is valid
+        if local_rank >= torch.cuda.device_count():
+            print(f"Warning: local_rank {local_rank} >= num_gpus {torch.cuda.device_count()}. Using local_rank 0 instead.")
+            local_rank = 0
         model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     
     # Initialize optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     
     # Initialize gradient scaler for mixed precision
-    scaler = GradScaler()
+    scaler = GradScaler('cuda')
     
     # Learning rate scheduler
     total_steps = len(train_loader) * num_epochs
@@ -493,10 +498,20 @@ def setup_distributed():
         
         # Set environment variables to avoid warnings
         os.environ['OMP_NUM_THREADS'] = '1'
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(local_rank)
         
-        # Set device BEFORE initializing process group
-        torch.cuda.set_device(local_rank)
+        # Check if CUDA is available and local_rank is valid
+        if torch.cuda.is_available():
+            num_gpus = torch.cuda.device_count()
+            if local_rank >= num_gpus:
+                print(f"Warning: local_rank {local_rank} >= num_gpus {num_gpus}. Using local_rank 0 instead.")
+                local_rank = 0
+            
+            # Set CUDA device
+            torch.cuda.set_device(local_rank)
+            os.environ['CUDA_VISIBLE_DEVICES'] = str(local_rank)
+        else:
+            print("Warning: CUDA not available. Using CPU.")
+            local_rank = 0
         
         # Initialize process group with proper configuration to avoid warnings
         dist.init_process_group(
@@ -543,8 +558,16 @@ def main():
     # Setup distributed training
     rank, world_size, local_rank = setup_distributed()
     
-    # Set device
-    device = torch.device(f'cuda:{local_rank}' if torch.cuda.is_available() else 'cpu')
+    # Set device - ensure it's valid
+    if torch.cuda.is_available():
+        num_gpus = torch.cuda.device_count()
+        if local_rank >= num_gpus:
+            print(f"Warning: local_rank {local_rank} >= num_gpus {num_gpus}. Using local_rank 0 instead.")
+            local_rank = 0
+        device = torch.device(f'cuda:{local_rank}')
+    else:
+        device = torch.device('cpu')
+        local_rank = 0
     
     # Parse max_samples argument
     max_samples = None

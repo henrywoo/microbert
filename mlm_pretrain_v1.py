@@ -13,7 +13,8 @@ from tqdm import tqdm
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler
+from torch.cuda.amp import autocast
 from microbert.model import MicroBERT
 from microbert.utils import plot_mlm_results
 
@@ -160,7 +161,7 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, 
         num_training_steps=total_steps
     )
     # Initialize gradient scaler for mixed precision
-    scaler = GradScaler()
+    scaler = GradScaler('cuda')
     
     # Training history
     history = {
