@@ -44,7 +44,7 @@ All versions are designed for **pretraining** with different optimizations:
 
 ### 1. Clone the repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/henrywoo/microbert.git
 cd microbert
 ```
 
