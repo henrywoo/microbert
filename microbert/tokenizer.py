@@ -27,9 +27,13 @@ class WordTokenizer:
                 '[SEP]',
                 '[UNK]',
             ]
+        else:
+            self.special_tokens = special_tokens
 
         # Create a vocabulary dictionary with special tokens and input vocabulary
-        self.vocab = {word: i for i, word in enumerate(self.special_tokens + sorted(vocab))}
+        # Ensure special tokens are at the beginning and no duplicates
+        all_tokens = self.special_tokens + [word for word in vocab if word not in self.special_tokens]
+        self.vocab = {word: i for i, word in enumerate(all_tokens)}
         # Create a reverse vocabulary dictionary for decoding purposes
         self.de_vocab = {i: word for word, i in self.vocab.items()}
 
@@ -50,8 +54,15 @@ class WordTokenizer:
         # Add special tokens ([CLS], [SEP]) and padding tokens ([PAD]) to the input sentence
         sentence = ['[CLS]'] + sentence + ['[SEP]'] + ['[PAD]'] * (self.max_seq_len - len(sentence) - 2)
         # Map words to their corresponding IDs in the vocabulary or use [UNK] token if not found
-        return torch.tensor([self.vocab[w] if w in self.vocab else self.vocab['[UNK]'] for w in sentence],
-                            dtype=torch.long)
+        token_ids = []
+        for w in sentence:
+            if w in self.vocab:
+                token_ids.append(self.vocab[w])
+            else:
+                # Use [UNK] token if word is not in vocabulary
+                token_ids.append(self.vocab.get('[UNK]', 0))
+        
+        return torch.tensor(token_ids, dtype=torch.long)
 
     # Method to decode token IDs back to original sentence
     def decode(self, ids: List, ignore_special=True):

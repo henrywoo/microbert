@@ -19,8 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import torch.distributed as dist
-from torch.amp import GradScaler
-from torch.cuda.amp import autocast
+from torch.amp import GradScaler, autocast
 import time
 from pathlib import Path
 import datetime
@@ -120,8 +119,16 @@ class MLMDataset(Dataset):
                     pad_tokens = torch.full((pad_length,), self.tokenizer.vocab['[PAD]'], dtype=torch.long)
                     input_ids = torch.cat([input_ids, pad_tokens])
         
+        # Ensure all token IDs are within valid vocabulary range
+        vocab_size = len(self.tokenizer.vocab)
+        input_ids = torch.clamp(input_ids, 0, vocab_size - 1)
+        
         # Apply MLM masking
         input_ids, labels = self.mask_tokens(input_ids)
+        
+        # Final validation - ensure all token IDs are still within bounds after masking
+        input_ids = torch.clamp(input_ids, 0, vocab_size - 1)
+        labels = torch.clamp(labels, -100, vocab_size - 1)  # -100 is the ignore_index for loss calculation
         
         return {
             'input_ids': input_ids,
@@ -148,14 +155,17 @@ class MLMDataset(Dataset):
         num_to_mask = max(1, int(len(maskable_positions) * self.mlm_probability))
         masked_positions = random.sample(maskable_positions, min(num_to_mask, len(maskable_positions)))
         
+        vocab_size = len(self.tokenizer.vocab)
+        
         for pos in masked_positions:
             # 80% chance to replace with [MASK]
             if random.random() < 0.8:
                 input_ids[pos] = self.tokenizer.vocab['[MASK]']
             # 10% chance to replace with random word
             elif random.random() < 0.5:
-                vocab_size = len(self.tokenizer.vocab)
-                input_ids[pos] = random.randint(0, vocab_size - 1)
+                # Ensure the random token ID is within valid range
+                random_token_id = random.randint(0, vocab_size - 1)
+                input_ids[pos] = random_token_id
             # 10% chance to keep original
             # (labels already contain original)
         
@@ -383,7 +393,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
             optimizer.zero_grad()
             
             # Forward pass with bfloat16 mixed precision (better for H200)
-            with autocast(dtype=torch.bfloat16):
+            with autocast('cuda', dtype=torch.bfloat16):
                 loss = model(input_ids, labels)
             
             # Backward pass with gradient scaling
@@ -418,7 +428,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
                 input_ids = batch['input_ids'].to(device)
                 labels = batch['labels'].to(device)
                 
-                with autocast(dtype=torch.bfloat16):
+                with autocast('cuda', dtype=torch.bfloat16):
                     loss = model(input_ids, labels)
                 
                 total_val_loss += loss.item()
@@ -619,15 +629,16 @@ def main():
             max_vocab_size = 10000
             most_common_words = [word for word, count in word_counts.most_common(max_vocab_size)]
             
-            # Add special tokens
+            # Add special tokens (ensure they're at the beginning and no duplicates)
             special_tokens = ['[PAD]', '[CLS]', '[SEP]', '[UNK]', '[MASK]']
-            vocab = set(special_tokens + most_common_words)
+            # Create vocabulary list with special tokens first, then common words
+            vocab_list = special_tokens + [word for word in most_common_words if word not in special_tokens]
             
-            print(f'Vocabulary size: {len(vocab)} (limited from {len(word_counts)} total unique words)')
+            print(f'Vocabulary size: {len(vocab_list)} (limited from {len(word_counts)} total unique words)')
             
             # Create our own tokenizer
             from microbert.tokenizer import WordTokenizer
-            tokenizer = WordTokenizer(vocab=list(vocab), max_seq_len=128)
+            tokenizer = WordTokenizer(vocab=vocab_list, max_seq_len=128)
             
             # Save tokenizer for other processes
             torch.save(tokenizer, '.temp_tokenizer.pth')
