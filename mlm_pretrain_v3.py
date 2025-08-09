@@ -51,8 +51,13 @@ class MicroBertMLM(nn.Module):
         # Get embeddings from MicroBERT
         embeddings = self.micro_bert.embedding(input_ids)
         
-        # Create attention mask for padding
-        attention_mask = (input_ids > 0).unsqueeze(1).repeat(1, input_ids.size(1), 1)
+        # Create attention mask for padding - ensure proper dimensions
+        # input_ids shape: (batch_size, seq_len)
+        # attention_mask shape: (batch_size, seq_len, seq_len)
+        batch_size, seq_len = input_ids.shape
+        # Create mask where 1 indicates valid tokens (non-padding) and 0 indicates padding
+        # Use boolean mask for better compatibility
+        attention_mask = (input_ids > 0).unsqueeze(1).expand(batch_size, seq_len, seq_len).bool()
         
         # Pass through encoder
         encoded = self.micro_bert.encoder(embeddings, attention_mask)
@@ -338,12 +343,8 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
     # Move model to device
     model = model.to(device)
     
-    # Wrap model with DDP if using multiple GPUs
-    if torch.cuda.device_count() > 1:
-        # Ensure local_rank is valid
-        if local_rank >= torch.cuda.device_count():
-            print(f"Warning: local_rank {local_rank} >= num_gpus {torch.cuda.device_count()}. Using local_rank 0 instead.")
-            local_rank = 0
+    # Wrap model with DDP if using multiple GPUs (check world_size instead of device_count)
+    if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
         model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     
     # Initialize optimizer
@@ -506,9 +507,8 @@ def setup_distributed():
                 print(f"Warning: local_rank {local_rank} >= num_gpus {num_gpus}. Using local_rank 0 instead.")
                 local_rank = 0
             
-            # Set CUDA device
+            # Set CUDA device BEFORE initializing process group
             torch.cuda.set_device(local_rank)
-            os.environ['CUDA_VISIBLE_DEVICES'] = str(local_rank)
         else:
             print("Warning: CUDA not available. Using CPU.")
             local_rank = 0
@@ -560,10 +560,7 @@ def main():
     
     # Set device - ensure it's valid
     if torch.cuda.is_available():
-        num_gpus = torch.cuda.device_count()
-        if local_rank >= num_gpus:
-            print(f"Warning: local_rank {local_rank} >= num_gpus {num_gpus}. Using local_rank 0 instead.")
-            local_rank = 0
+        # Use the local_rank that was already validated in setup_distributed
         device = torch.device(f'cuda:{local_rank}')
     else:
         device = torch.device('cpu')
@@ -709,6 +706,12 @@ def main():
             head_size = n_embed // n_heads
             num_epochs = args.epochs
             learning_rate = args.lr
+        
+        # Ensure n_embed is divisible by n_heads
+        if n_embed % n_heads != 0:
+            n_embed = ((n_embed + n_heads - 1) // n_heads) * n_heads
+            if rank == 0:
+                print(f"Warning: n_embed adjusted to {n_embed} to be divisible by n_heads {n_heads}")
         
         if rank == 0:
             print(f"Model configuration:")

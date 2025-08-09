@@ -53,6 +53,9 @@ class BertAttentionHead(torch.nn.Module):
         
         # Handle case where mask might be None
         if mask is not None:
+            # Ensure mask has the right shape and type
+            if mask.dtype != torch.bool:
+                mask = mask.bool()
             # Use a value compatible with float16 (Half) type
             neg_inf = torch.finfo(weights.dtype).min
             weights = weights.masked_fill(~mask, neg_inf)  # mask out not attended tokens
@@ -69,10 +72,21 @@ class BertSelfAttention(torch.nn.Module):
     """
     def __init__(self, n_heads=1, dropout=0.1, n_embed=3):
         super().__init__()
+        # Ensure n_embed is divisible by n_heads
+        if n_embed % n_heads != 0:
+            # Adjust n_embed to be divisible by n_heads
+            n_embed = ((n_embed + n_heads - 1) // n_heads) * n_heads
+            print(f"Warning: n_embed adjusted to {n_embed} to be divisible by n_heads {n_heads}")
+        
         head_size = n_embed // n_heads
         # Ensure head_size is at least 1
         if head_size < 1:
             head_size = 1
+        
+        self.n_heads = n_heads
+        self.head_size = head_size
+        self.n_embed = n_embed
+        
         self.heads = torch.nn.ModuleList([BertAttentionHead(head_size, dropout, n_embed) for _ in range(n_heads)])
         self.proj = torch.nn.Linear(head_size * n_heads, n_embed)  # project from multiple heads to the single space
         self.dropout = torch.nn.Dropout(dropout)
