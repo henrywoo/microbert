@@ -1,6 +1,33 @@
-# MicroBERT MLM Pre-training
+# MicroBERT
 
-A lightweight BERT implementation for Masked Language Modeling (MLM) pre-training with support for multiple datasets and streaming capabilities.
+**Educational Purpose**: This project is designed for educational purposes to demonstrate and learn about BERT implementation, pretraining, and fine-tuning techniques. It provides a comprehensive framework for understanding transformer architectures and training methodologies.
+
+A lightweight BERT implementation for Masked Language Modeling (MLM) pre-training and Supervised Fine-Tuning (SFT) with support for multiple datasets and streaming capabilities. The project includes multiple versions optimized for different GPU environments and use cases.
+
+## Project Overview
+
+This educational project provides:
+
+- **Pretraining (MLM)**: Multiple versions (v0-v4) for different GPU environments and model sizes
+- **Supervised Fine-Tuning (SFT)**: Complete SFT implementation for downstream tasks
+- **GPU Environment Adaptation**: Optimized configurations for various GPU memory capacities
+- **Educational Resources**: Comprehensive examples for learning transformer architectures
+
+## Version Architecture
+
+### Pretraining Versions (v0-v4)
+
+All versions are designed for **pretraining** with different optimizations:
+
+- **v0**: Basic single-GPU full precision training for small models
+- **v1**: Single-GPU mixed precision training for small models  
+- **v2**: Single-GPU full precision training for medium models
+- **v3**: Multi-GPU full precision training for large models
+- **v4**: Multi-GPU mixed precision training for extra-large models
+
+### SFT Implementation
+
+- **`sft_hfbert.py`**: Complete Supervised Fine-Tuning implementation for downstream tasks
 
 ## Features
 
@@ -8,8 +35,10 @@ A lightweight BERT implementation for Masked Language Modeling (MLM) pre-trainin
 - 📊 **Multiple Datasets**: Support for IMDB and Hugging Face datasets
 - 💾 **Streaming Support**: Memory-efficient data loading with local caching
 - 🎯 **MLM Pre-training**: Full Masked Language Modeling implementation
+- 🔧 **SFT Fine-tuning**: Complete supervised fine-tuning pipeline
 - 📈 **Training Visualization**: Built-in plotting and monitoring
 - 🔧 **Flexible Configuration**: Easy model parameter tuning
+- 🎓 **Educational Focus**: Designed for learning transformer architectures
 
 ## Installation
 
@@ -42,22 +71,35 @@ pip install -e .
 
 ## Quick Start
 
-### 🎯 **Choose the Right Training Script**
+### 🎯 **Choose the Right Training Script for Your Learning Goals**
 
-Based on your needs and hardware configuration, choose one of the following four versions:
+This educational project provides multiple versions optimized for different learning objectives and hardware configurations. Choose based on your educational needs:
 
-#### **v1: Quick Start (IMDB Dataset)**
+#### **v0: Basic Learning (Single GPU, Full Precision)**
 ```bash
-# Quick training with IMDB dataset
-python mlm_pretrain_v1.py
+# Basic training for learning fundamentals
+python mlm_pretrain_v0.py
 ```
-- **Use Case**: Learning, testing, quick validation
+- **Use Case**: Learning BERT fundamentals, basic implementation understanding
 - **Dataset**: IMDB movie reviews (~25K samples)
 - **Model**: Small model (2 layers, 2 heads, 4-dim embeddings)
 - **Training Time**: ~5 minutes
 - **Memory Requirements**: Low
+- **Educational Focus**: Understanding basic transformer architecture
 
-#### **v2: Standard Training (Hugging Face Datasets)**
+#### **v1: Mixed Precision Learning (Single GPU, Mixed Precision)**
+```bash
+# Mixed precision training for learning optimization techniques
+python mlm_pretrain_v1.py
+```
+- **Use Case**: Learning mixed precision training, optimization techniques
+- **Dataset**: IMDB movie reviews (~25K samples)
+- **Model**: Small model (2 layers, 2 heads, 4-dim embeddings)
+- **Training Time**: ~5 minutes
+- **Memory Requirements**: Low
+- **Educational Focus**: Understanding mixed precision training and optimization
+
+#### **v2: Medium Model Learning (Single GPU, Full Precision)**
 ```bash
 # Use Hugging Face large datasets (default 500K samples)
 python mlm_pretrain_v2.py hf
@@ -71,13 +113,14 @@ python mlm_pretrain_v2.py hf false 50M
 # Or use IMDB dataset
 python mlm_pretrain_v2.py imdb
 ```
-- **Use Case**: Standard training, medium-scale datasets
+- **Use Case**: Learning with medium-scale models, understanding larger datasets
 - **Dataset**: Hugging Face datasets (configurable size: 500K-500M samples) or IMDB
 - **Model**: Medium model (4 layers, 4 heads, 8-dim embeddings) or small model
 - **Training Time**: ~30 minutes (500K) / ~2 hours (5M) / ~20 hours (50M)
 - **Memory Requirements**: Medium
+- **Educational Focus**: Understanding medium-scale models and large dataset handling
 
-#### **v3: Multi-GPU Training (H200 8-Card)**
+#### **v3: Multi-GPU Learning (Multi-GPU, Full Precision)**
 ```bash
 # Use pre-configured script (recommended)
 python multi_gpu_configs.py generate h200_8gpu_standard
@@ -98,14 +141,15 @@ torchrun \
     --streaming true \
     --max-samples 500k
 ```
-- **Use Case**: Multi-GPU training, large-scale datasets
+- **Use Case**: Learning distributed training, multi-GPU environments
 - **Dataset**: Hugging Face datasets (configurable size: 500K-50M samples) or IMDB
-- **Model**: Medium model (6 layers, 8 heads, 16-dim embeddings) or small model
+- **Model**: Large model (6 layers, 8 heads, 16-dim embeddings) or small model
 - **Training Time**: ~15 minutes (500K) / ~1.3 hours (5M) / ~13 hours (50M)
 - **Memory Requirements**: Medium
 - **GPU Requirements**: 8-card H200 or similar configuration
+- **Educational Focus**: Understanding distributed training and multi-GPU coordination
 
-#### **v4: 24GB Memory Optimized Training (H200/A10 Compatible)**
+#### **v4: Advanced Multi-GPU Learning (Multi-GPU, Mixed Precision)**
 ```bash
 # Use pre-configured script (recommended)
 ./train_h200_8gpu_v4.sh
@@ -125,7 +169,7 @@ torchrun \
     --streaming true \
     --max-samples 10M
 ```
-- **Use Case**: 24GB GPU memory optimized training (H200/A10 compatible)
+- **Use Case**: Learning advanced distributed training with mixed precision (H200/A10 compatible)
 - **Dataset**: Hugging Face datasets (configurable size: 500K-50M samples) or IMDB
 - **Model**: Dynamic configuration (automatically adjusted based on GPU memory)
   - **Large Model** (100GB+ GPU): 4 layers, 8 heads, 128-dim embeddings, batch_size=16
@@ -134,6 +178,25 @@ torchrun \
 - **Training Time**: ~15 minutes (10M samples)
 - **Memory Requirements**: Very conservative configuration, ensuring single card memory usage doesn't exceed 24GB
 - **GPU Requirements**: 24GB+ GPU (H200, A10, RTX 4090, etc.)
+- **Educational Focus**: Understanding advanced distributed training, mixed precision, and memory optimization
+
+### **SFT (Supervised Fine-Tuning) Learning**
+
+For learning supervised fine-tuning techniques:
+
+```bash
+# Complete SFT implementation for downstream tasks
+python sft_hfbert.py
+```
+
+- **Use Case**: Learning supervised fine-tuning for downstream NLP tasks
+- **Implementation**: Complete SFT pipeline with Hugging Face BERT
+- **Educational Focus**: Understanding transfer learning and task-specific fine-tuning
+- **Features**: 
+  - Pre-trained model loading
+  - Task-specific dataset preparation
+  - Fine-tuning training loop
+  - Evaluation and inference
 
 ## Project Structure
 
@@ -144,10 +207,12 @@ microbert/
 │   ├── model.py                 # BERT model implementation
 │   ├── tokenizer.py             # Word-level tokenizer
 │   └── utils.py                 # Utility functions
-├── mlm_pretrain_v1.py           # v1: IMDB-only MLM training (Quick Start)
-├── mlm_pretrain_v2.py           # v2: Standard MLM training with dataset options (Standard Training)
-├── mlm_pretrain_v3.py           # v3: Multi-GPU MLM training (Multi-GPU Training)
-├── mlm_pretrain_v4.py           # v4: 24GB memory optimized MLM training (24GB Memory Optimized)
+├── mlm_pretrain_v0.py           # v0: Basic MLM training (Single GPU, Full Precision)
+├── mlm_pretrain_v1.py           # v1: Mixed precision MLM training (Single GPU, Mixed Precision)
+├── mlm_pretrain_v2.py           # v2: Medium model MLM training (Single GPU, Full Precision)
+├── mlm_pretrain_v3.py           # v3: Multi-GPU MLM training (Multi-GPU, Full Precision)
+├── mlm_pretrain_v4.py           # v4: Advanced multi-GPU MLM training (Multi-GPU, Mixed Precision)
+├── sft_hfbert.py                # SFT implementation for downstream tasks
 ├── multi_gpu_configs.py         # Multi-GPU training configurations
 ├── run_multi_gpu_training.sh    # Multi-GPU training launcher
 ├── train_h200_8gpu_standard.sh  # H200 8-GPU standard training script
@@ -170,10 +235,24 @@ microbert/
 
 ## Usage Examples
 
-### 🎯 **v1: Quick Start Training (IMDB Dataset)**
+### 🎯 **v0: Basic Learning Training (IMDB Dataset)**
 
 ```bash
-# Quick training with IMDB dataset
+# Basic training for learning BERT fundamentals
+python mlm_pretrain_v0.py
+```
+
+**Features:**
+- Uses 25K IMDB movie reviews
+- Small model: 2 layers, 2 heads, 4-dim embeddings
+- Fast training (~5 minutes)
+- Suitable for learning basic transformer architecture
+- **Educational Focus**: Understanding fundamental BERT implementation
+
+### 🎯 **v1: Mixed Precision Learning Training (IMDB Dataset)**
+
+```bash
+# Mixed precision training for learning optimization techniques
 python mlm_pretrain_v1.py
 ```
 
@@ -181,9 +260,10 @@ python mlm_pretrain_v1.py
 - Uses 25K IMDB movie reviews
 - Small model: 2 layers, 2 heads, 4-dim embeddings
 - Fast training (~5 minutes)
-- Suitable for learning and testing
+- Suitable for learning mixed precision training
+- **Educational Focus**: Understanding optimization techniques
 
-### 🚀 **v2: Standard Training (Hugging Face Datasets)**
+### 🚀 **v2: Medium Model Learning (Hugging Face Datasets)**
 
 ```bash
 # Use Hugging Face large datasets (streaming mode)
@@ -201,8 +281,9 @@ python mlm_pretrain_v2.py imdb
 - Medium model: 4 layers, 4 heads, 8-dim embeddings (HF) or 2 layers, 2 heads, 4-dim embeddings (IMDB)
 - Automatic caching and streaming processing
 - Training time: ~30 minutes (HF) / ~5 minutes (IMDB)
+- **Educational Focus**: Learning with medium-scale models and large dataset handling
 
-### ⚡ **v3: Multi-GPU Training (H200 8-Card)**
+### ⚡ **v3: Multi-GPU Learning (H200 8-Card)**
 
 #### **Method 1: Use Pre-configured Scripts**
 ```bash
@@ -264,8 +345,9 @@ torchrun \
 - Mixed precision training
 - Automatic GPU detection and configuration
 - Training time: ~30 minutes (8GPU)
+- **Educational Focus**: Learning distributed training and multi-GPU coordination
 
-### 🚀 **v4: 24GB Memory Optimized Training (H200/A10 Compatible)**
+### 🚀 **v4: Advanced Multi-GPU Learning (24GB Memory Optimized)**
 
 #### **Method 1: Use Pre-configured Script (Recommended)**
 ```bash
@@ -329,6 +411,7 @@ python mlm_pretrain_v4.py \
 - **Mixed precision training**: bfloat16 optimization
 - **Distributed training**: Supports multi-GPU
 - **Automatic caching**: Intelligent data caching system
+- **Educational Focus**: Learning advanced distributed training, mixed precision, and memory optimization
 
 **Use Cases:**
 - 24GB+ GPU environments (H200, A10, RTX 4090, etc.)
@@ -344,6 +427,22 @@ python mlm_pretrain_v4.py \
 - **Data throughput**: 10x increase
 - **Sequence length**: 2x increase (128→256)
 - **Vocabulary size**: 2.5x increase (10K→25K)
+
+### 🎯 **SFT: Supervised Fine-Tuning Learning**
+
+For learning supervised fine-tuning techniques:
+
+```bash
+# Complete SFT implementation for downstream tasks
+python sft_hfbert.py
+```
+
+**Features:**
+- Complete SFT pipeline with Hugging Face BERT
+- Task-specific dataset preparation
+- Fine-tuning training loop
+- Evaluation and inference
+- **Educational Focus**: Understanding transfer learning and task-specific fine-tuning
 
 ### 3. Test Streaming Functionality
 ```bash
@@ -369,9 +468,9 @@ python cache_manager.py usage
 
 ## 🎯 **Detailed Running Guide**
 
-### **v1: Quick Start Training**
+### **v0: Basic Learning Training**
 
-**Use Case**: Learning, testing, quick validation
+**Use Case**: Learning BERT fundamentals, basic implementation understanding
 
 ```bash
 # Basic run
@@ -395,9 +494,35 @@ Epoch 3/3: Train Loss: 9.0580 | Val Loss: 9.0374
 MLM pre-training completed!
 ```
 
-### **v2: Standard Training**
+### **v1: Mixed Precision Learning Training**
 
-**Use Case**: Standard training, medium-scale datasets
+**Use Case**: Learning mixed precision training, optimization techniques
+
+```bash
+# Basic run
+python mlm_pretrain_v1.py
+
+# View help
+python mlm_pretrain_v1.py --help
+```
+
+**Output Example:**
+```
+Using device: cuda
+Loading IMDB dataset for MLM pre-training...
+Training samples: 22500
+Validation samples: 2500
+Vocabulary size: 10005
+Starting MLM pre-training with mixed precision...
+Epoch 1/3: Train Loss: 9.3330 | Val Loss: 9.2017
+Epoch 2/3: Train Loss: 9.1415 | Val Loss: 9.0840
+Epoch 3/3: Train Loss: 9.0580 | Val Loss: 9.0374
+MLM pre-training completed!
+```
+
+### **v2: Medium Model Learning Training**
+
+**Use Case**: Learning with medium-scale models, understanding larger datasets
 
 ```bash
 # Use Hugging Face datasets (streaming mode, default 500K samples)
@@ -435,9 +560,9 @@ Epoch 2/5: Train Loss: 6.6408 | Val Loss: 6.5902
 ...
 ```
 
-### **v3: Multi-GPU Training**
+### **v3: Multi-GPU Learning Training**
 
-**Use Case**: Large-scale training, multi-GPU environments
+**Use Case**: Learning distributed training, multi-GPU environments
 
 #### **Step 1: View Available Configurations**
 ```bash
@@ -518,9 +643,9 @@ Epoch 1/5: Train Loss: 6.1234 | Val Loss: 5.9876
 ...
 ```
 
-### **v4: 24GB Memory Optimized Training**
+### **v4: Advanced Multi-GPU Learning Training**
 
-**Use Case**: 24GB+ GPU environments, high memory utilization requirements, large-scale model training
+**Use Case**: Learning advanced distributed training with mixed precision, 24GB+ GPU environments
 
 #### **Step 1: Check GPU Configuration**
 ```bash
@@ -612,6 +737,16 @@ Epoch 1/5: Train Loss: 5.2341 | Val Loss: 5.1234
 
 The system automatically selects appropriate model configurations based on the dataset:
 
+### 🎯 **v0 Configuration (mlm_pretrain_v0.py)**
+- **Layers**: 2
+- **Attention Heads**: 2
+- **Embedding Dimension**: 4
+- **Max Sequence Length**: 128
+- **Vocabulary Size**: 10,000
+- **Parameter Count**: ~41K
+- **Training Time**: ~5 minutes
+- **Use Case**: Learning BERT fundamentals, basic implementation understanding
+
 ### 🎯 **v1 Configuration (mlm_pretrain_v1.py)**
 - **Layers**: 2
 - **Attention Heads**: 2
@@ -620,7 +755,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Vocabulary Size**: 10,000
 - **Parameter Count**: ~41K
 - **Training Time**: ~5 minutes
-- **Use Case**: Learning, testing, small datasets
+- **Use Case**: Learning mixed precision training, optimization techniques
 
 ### 🚀 **v2 Configuration (mlm_pretrain_v2.py)**
 - **Layers**: 4 (HF) / 2 (IMDB)
@@ -630,7 +765,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Vocabulary Size**: 10,000
 - **Parameter Count**: ~84K (HF) / ~41K (IMDB)
 - **Training Time**: ~30 minutes (HF) / ~5 minutes (IMDB)
-- **Use Case**: Large datasets, better performance
+- **Use Case**: Learning with medium-scale models, understanding larger datasets
 
 ### ⚡ **v3 Configuration (mlm_pretrain_v3.py)**
 - **Layers**: 6
@@ -640,7 +775,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Vocabulary Size**: 10,000
 - **Parameter Count**: ~182K
 - **Training Time**: ~30 minutes (8GPU)
-- **Use Case**: Large-scale training, multi-GPU environments
+- **Use Case**: Learning distributed training, multi-GPU environments
 
 ### 🚀 **v4 Configuration (mlm_pretrain_v4.py)**
 - **Layers**: 8
@@ -650,7 +785,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Vocabulary Size**: 25,000
 - **Parameter Count**: ~15M
 - **Training Time**: ~20 minutes (8GPU)
-- **Use Case**: 24GB+ GPU environments, high memory utilization requirements
+- **Use Case**: Learning advanced distributed training with mixed precision, 24GB+ GPU environments
 - **Memory Usage**: ~20GB/24GB (83% utilization)
 - **Batch Size**: 96 per GPU (total 768)
 - **Mixed Precision**: bfloat16 optimization
@@ -658,12 +793,13 @@ The system automatically selects appropriate model configurations based on the d
 ### 📊 **All Available Configurations**
 Run `python model_config_comparison.py` to view all configurations:
 
-| Configuration | Layers | Heads | Embedding | Parameters | Use Case |
-|---------------|--------|-------|-----------|------------|----------|
-| **IMDB Small** | 2 | 2 | 4 | ~41K | IMDB Dataset |
-| **HF Medium** | 4 | 4 | 8 | ~84K | HF Datasets |
-| **HF Large** | 6 | 8 | 16 | ~182K | Large Datasets |
-| **HF Extra Large** | 8 | 8 | 256 | ~15M | 24GB+ GPU Optimized |
+| Configuration | Layers | Heads | Embedding | Parameters | Educational Focus |
+|---------------|--------|-------|-----------|------------|-------------------|
+| **v0: Basic** | 2 | 2 | 4 | ~41K | BERT fundamentals, basic implementation |
+| **v1: Mixed Precision** | 2 | 2 | 4 | ~41K | Mixed precision training, optimization |
+| **v2: Medium Model** | 4 | 4 | 8 | ~84K | Medium-scale models, large datasets |
+| **v3: Multi-GPU** | 6 | 8 | 16 | ~182K | Distributed training, multi-GPU coordination |
+| **v4: Advanced Multi-GPU** | 8 | 8 | 256 | ~15M | Advanced distributed training, mixed precision |
 
 ## Dataset Options
 
@@ -779,29 +915,31 @@ The project includes an intelligent caching system:
 
 ## 📊 **Version Comparison Summary**
 
-| Feature | v1 (Quick Start) | v2 (Standard Training) | v3 (Multi-GPU Training) | v4 (24GB Optimized) |
-|---------|-------------------|------------------------|-------------------------|---------------------|
-| **Use Case** | Learning, Testing | Standard Training | Large-scale Training | 24GB+ GPU Optimized |
-| **Dataset** | IMDB | IMDB + HF | IMDB + HF | IMDB + HF |
-| **Model Size** | Small (41K params) | Medium (84K params) | Large (182K params) | Extra Large (15M params) |
-| **Training Time** | ~5 minutes | ~30 minutes | ~30 minutes (8GPU) | ~20 minutes (8GPU) |
-| **GPU Requirements** | 1 | 1 | Multiple | Multiple |
-| **Memory Requirements** | Low | Medium | High | Very High (24GB+) |
-| **Streaming** | ❌ | ✅ | ✅ | ✅ |
-| **Caching System** | ❌ | ✅ | ✅ | ✅ |
-| **Mixed Precision** | ❌ | ❌ | ✅ | ✅ |
-| **Distributed Training** | ❌ | ❌ | ✅ | ✅ |
-| **Memory Utilization** | Low | Medium | Medium | High (83%) |
-| **Batch Size** | 32 | 32 | 32 per GPU | 96 per GPU |
-| **Sequence Length** | 128 | 128 | 128 | 256 |
-| **Vocabulary Size** | 10K | 10K | 10K | 25K |
+| Feature | v0 (Basic) | v1 (Mixed Precision) | v2 (Medium Model) | v3 (Multi-GPU) | v4 (Advanced Multi-GPU) |
+|---------|-------------|----------------------|-------------------|-----------------|--------------------------|
+| **Educational Focus** | BERT fundamentals | Mixed precision training | Medium-scale models | Distributed training | Advanced distributed training |
+| **Dataset** | IMDB | IMDB | IMDB + HF | IMDB + HF | IMDB + HF |
+| **Model Size** | Small (41K params) | Small (41K params) | Medium (84K params) | Large (182K params) | Extra Large (15M params) |
+| **Training Time** | ~5 minutes | ~5 minutes | ~30 minutes | ~30 minutes (8GPU) | ~20 minutes (8GPU) |
+| **GPU Requirements** | 1 | 1 | 1 | Multiple | Multiple |
+| **Memory Requirements** | Low | Low | Medium | High | Very High (24GB+) |
+| **Streaming** | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **Caching System** | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **Mixed Precision** | ❌ | ✅ | ❌ | ✅ | ✅ |
+| **Distributed Training** | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **Memory Utilization** | Low | Low | Medium | Medium | High (83%) |
+| **Batch Size** | 32 | 32 | 32 | 32 per GPU | 96 per GPU |
+| **Sequence Length** | 128 | 128 | 128 | 128 | 256 |
+| **Vocabulary Size** | 10K | 10K | 10K | 10K | 25K |
 
 ## 🎯 **Selection Recommendations**
 
-- **Beginners/Testing**: Use `v1` - Fast, simple, low resource requirements
-- **Standard Training**: Use `v2` - Balanced performance and resource requirements
-- **Large-scale Training**: Use `v3` - Fully utilize multi-GPU resources
-- **24GB+ GPU Environments**: Use `v4` - High memory utilization, large models, fast training
+- **Beginners/Learning Fundamentals**: Use `v0` - Basic BERT implementation, low resource requirements
+- **Learning Optimization**: Use `v1` - Mixed precision training, optimization techniques
+- **Medium-scale Learning**: Use `v2` - Balanced performance, medium models, large datasets
+- **Learning Distributed Training**: Use `v3` - Multi-GPU environments, distributed training concepts
+- **Advanced Distributed Learning**: Use `v4` - Advanced multi-GPU, mixed precision, high memory utilization
+- **Learning Fine-tuning**: Use `sft_hfbert.py` - Complete SFT pipeline for downstream tasks
 
 ## Contributing
 
@@ -819,4 +957,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Based on the BERT architecture from "Attention Is All You Need"
 - Uses Hugging Face datasets and transformers libraries
+- Designed for educational purposes to help learners understand transformer architectures
 - Inspired by educational implementations of transformer models 
