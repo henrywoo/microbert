@@ -597,7 +597,7 @@ def main():
         
         # Load tokenizer on all processes
         if world_size > 1:
-            tokenizer = torch.load('.temp_tokenizer.pth')
+            tokenizer = torch.load('.temp_tokenizer.pth', weights_only=False)
         
         # Create datasets
         if rank == 0:
@@ -614,8 +614,8 @@ def main():
         
         # Load datasets on all processes
         if world_size > 1:
-            train_dataset = torch.load('.temp_train_dataset.pth')
-            val_dataset = torch.load('.temp_val_dataset.pth')
+            train_dataset = torch.load('.temp_train_dataset.pth', weights_only=False)
+            val_dataset = torch.load('.temp_val_dataset.pth', weights_only=False)
         
         # Create data loaders with distributed sampling
         if world_size > 1:
