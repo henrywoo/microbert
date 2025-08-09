@@ -1,29 +1,22 @@
-#!/usr/bin/env python3
-"""
-MLM pre-training script using only IMDB dataset
-"""
-
 import os
 import json
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from transformers import get_linear_schedule_with_warmup
+from transformers import BertTokenizer, get_linear_schedule_with_warmup
 from tqdm import tqdm
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from torch.amp import GradScaler
 from microbert.model import MicroBERT
-from microbert.utils import plot_mlm_results
-from hiq.vis import print_model
+from microbert.utils import plot_results, plot_mlm_results
 
 
 class MicroBertMLM(torch.nn.Module):
     """
     MicroBERT model for Masked Language Modeling (MLM) pre-training
     """
+
     def __init__(self, vocab_size, n_layers=2, n_heads=1, n_embed=3, max_seq_len=128):
         super().__init__()
         self.micro_bert = MicroBERT(
@@ -34,11 +27,11 @@ class MicroBertMLM(torch.nn.Module):
             max_seq_len=max_seq_len
         )
         self.mlm_head = torch.nn.Linear(n_embed, vocab_size)
-        
+
     def forward(self, input_ids, labels=None):
         # Get embeddings from MicroBERT
         embeddings = self.micro_bert.embedding(input_ids)
-        # Create attention mask for the encoder
+        # Create attention mask for the encoder (same as in MicroBERT)
         attention_mask = (input_ids > 0).unsqueeze(1).repeat(1, input_ids.size(1), 1)
         encoded = self.micro_bert.encoder(embeddings, attention_mask)
         # Apply MLM head to predict masked tokens
@@ -55,15 +48,16 @@ class MLMDataset(Dataset):
     """
     Dataset for MLM pre-training with masking using our own tokenizer
     """
+
     def __init__(self, data, tokenizer, max_length=128, mlm_probability=0.15):
         self.data = data
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.mlm_probability = mlm_probability
-        
+
     def __len__(self):
         return len(self.data)
-    
+
     def __getitem__(self, idx):
         item = self.data[idx]
         # Use our own tokenizer (already tokenized)
@@ -92,7 +86,7 @@ class MLMDataset(Dataset):
             'input_ids': masked_input_ids,
             'labels': labels
         }
-    
+
     def mask_tokens(self, input_ids):
         """
         Prepare masked tokens inputs/labels for masked language modeling
@@ -107,51 +101,44 @@ class MLMDataset(Dataset):
             self.tokenizer.vocab['[SEP]'],
             self.tokenizer.vocab['[UNK]']
         ]
-        for token_id in special_token_ids:
-            probability_matrix[labels == token_id] = 0.0
-        
-        # Create mask
+        for special_id in special_token_ids:
+            probability_matrix.masked_fill_(labels == special_id, value=0.0)
+        # Mask tokens
         masked_indices = torch.bernoulli(probability_matrix).bool()
         labels[~masked_indices] = -100  # We only compute loss on masked tokens
-        
-        # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
+        # 80% of the time, we replace masked input tokens with [MASK]
         indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
         input_ids[indices_replaced] = self.tokenizer.vocab['[MASK]']
-        
         # 10% of the time, we replace masked input tokens with random word
         indices_random = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices & ~indices_replaced
+        # Ensure random indices are within valid vocabulary range
         vocab_size = len(self.tokenizer.vocab)
         random_words = torch.randint(0, vocab_size, labels.shape, dtype=torch.long)
         input_ids[indices_random] = random_words[indices_random]
-        
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return input_ids, labels
 
 
 def load_imdb_data():
     """
-    Load IMDB dataset for MLM pre-training
+    Load IMDB dataset from JSON files
     """
-    # Load IMDB dataset
-    from datasets import load_dataset
-    dataset = load_dataset("imdb", split="train")
-    
-    # Convert to our format
-    data = []
-    for item in dataset:
-        text = item['text']
-        if len(text.strip()) > 10:  # Only keep meaningful text
-            tokens = text.strip().lower().split()
-            if len(tokens) >= 5:  # Only keep sentences with at least 5 words
-                data.append({'text': tokens})
-    
-    print(f"Loaded {len(data)} samples from IMDB")
-    return data, []  # No separate test data for MLM
+    # Load training data
+    train_data = []
+    with open('imdb_train.json', 'r') as f:
+        for line in f:
+            train_data.append(json.loads(line.strip()))
+    # Load test data
+    test_data = []
+    with open('imdb_test.json', 'r') as f:
+        for line in f:
+            test_data.append(json.loads(line.strip()))
+    return train_data, test_data
 
 
-def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=20, learning_rate=5e-5):
+def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=10, learning_rate=5e-5):
     """
-    Train the MLM model with bfloat16 mixed precision
+    Train the MLM model
     """
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     # Learning rate scheduler
@@ -161,16 +148,12 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=20,
         num_warmup_steps=int(0.1 * total_steps),
         num_training_steps=total_steps
     )
-    # Initialize gradient scaler for mixed precision
-    scaler = GradScaler('cuda')
-    
     # Training history
     history = {
         'train_losses': [],
         'val_losses': []
     }
     best_val_loss = float('inf')
-    
     for epoch in range(num_epochs):
         print(f'Epoch {epoch + 1}/{num_epochs}')
         # Training phase
@@ -180,19 +163,12 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=20,
             input_ids = batch['input_ids'].to(device)
             labels = batch['labels'].to(device)
             optimizer.zero_grad()
-            
-            # Forward pass with bfloat16 mixed precision
-            with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-                loss = model(input_ids, labels)
-            
-            # Backward pass with gradient scaling
-            scaler.scale(loss).backward()
+            loss = model(input_ids, labels)
+            loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            scaler.step(optimizer)
-            scaler.update()
+            optimizer.step()
             scheduler.step()
             train_loss += loss.item()
-        
         # Validation phase
         model.eval()
         val_loss = 0.0
@@ -200,12 +176,8 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=20,
             for batch in tqdm(val_loader, desc='Validation'):
                 input_ids = batch['input_ids'].to(device)
                 labels = batch['labels'].to(device)
-                
-                with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-                    loss = model(input_ids, labels)
-                
+                loss = model(input_ids, labels)
                 val_loss += loss.item()
-        
         # Store history
         avg_train_loss = train_loss / len(train_loader)
         avg_val_loss = val_loss / len(val_loader)
@@ -216,7 +188,7 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=20,
         # Save best model
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            save_mlm_model(model, tokenizer, history, '.mlm_v1')
+            save_mlm_model(model, tokenizer, history, '.mlm_v0')
     return history
 
 
@@ -225,51 +197,48 @@ def save_mlm_model(model, tokenizer, history, save_dir):
     Save the MLM pre-trained model
     """
     os.makedirs(save_dir, exist_ok=True)
-    
+
     # Save model
     model_path = os.path.join(save_dir, 'mlm_model.pth')
     torch.save(model.state_dict(), model_path)
-    
+
     # Save MicroBERT model for later use
     microbert_path = os.path.join(save_dir, 'microbert_model.pth')
     torch.save(model.micro_bert.state_dict(), microbert_path)
-    
+
     # Save tokenizer
     tokenizer_path = os.path.join(save_dir, 'tokenizer_vocab.json')
     with open(tokenizer_path, 'w') as f:
         json.dump(tokenizer.vocab, f, indent=2)
-    
+
     # Save training history
     history_path = os.path.join(save_dir, 'mlm_training_history.json')
     with open(history_path, 'w') as f:
         json.dump(history, f, indent=2)
-    
+
     print(f'MLM model saved to {save_dir}')
 
 
 def main():
     """
-    Main MLM pre-training function using only IMDB dataset
+    Main MLM pre-training function
     """
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Using device: {device}')
-    
-    # Load IMDB data
+
+    # Load data
     print('Loading IMDB dataset for MLM pre-training...')
     train_data, test_data = load_imdb_data()
-    
+
     # Use all data for MLM pre-training (unsupervised)
-    if test_data:
-        all_data = train_data + test_data
-    else:
-        all_data = train_data
-    
+    all_data = train_data + test_data
+
     # Split into train and validation
     train_size = int(0.9 * len(all_data))
     val_data = all_data[train_size:]
     train_data = all_data[:train_size]
-    
+
     print(f'Training samples: {len(train_data)}')
     print(f'Validation samples: {len(val_data)}')
 
@@ -296,38 +265,28 @@ def main():
     # Create datasets
     train_dataset = MLMDataset(train_data, tokenizer)
     val_dataset = MLMDataset(val_data, tokenizer)
-    
+
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
+
     # Initialize model
-    # Ensure n_embed is divisible by n_heads for proper multi-head attention
-    n_heads = 2
-    n_embed = 4  # Changed from 3 to 4 so it's divisible by 2
-    head_size = n_embed // n_heads  # 4 // 2 = 2, which is better than 1
-    
     model = MicroBertMLM(
         vocab_size=len(tokenizer.vocab),
         n_layers=2,
-        n_heads=n_heads,
-        n_embed=n_embed,
+        n_heads=2,
+        n_embed=4,
         max_seq_len=128
     ).to(device)
 
-    # Print model structure using hiq
-    print("\n=== Model Structure ===")
-    print_model(model)
-    print("=== End Model Structure ===\n")
-    
     # Check if model already exists
-    if os.path.exists('.mlm_v1/mlm_model.pth'):
+    if os.path.exists('.mlm_v0/mlm_model.pth'):
         print('Loading existing MLM model...')
-        model.load_state_dict(torch.load('.mlm_v1/mlm_model.pth', map_location=device, weights_only=True))
+        model.load_state_dict(torch.load('.mlm_v0/mlm_model.pth', map_location=device, weights_only=True))
         print('MLM model loaded successfully!')
-        
+
         # Load training history for plotting
-        history_path = os.path.join('.mlm_v1', 'mlm_training_history.json')
+        history_path = os.path.join('.mlm_v0', 'mlm_training_history.json')
         if os.path.exists(history_path):
             with open(history_path, 'r') as f:
                 history = json.load(f)
@@ -338,9 +297,9 @@ def main():
     else:
         print('Starting MLM pre-training...')
         # Train model
-        history = train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=20)
+        history = train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=10)
         print('MLM pre-training completed!')
-    
+
     # Test the model with some examples
     print('\n=== Testing MLM Model ===')
     test_texts = [
@@ -348,11 +307,11 @@ def main():
         ["the", "acting", "was", "[MASK]", "but", "the", "plot", "was", "confusing"],
         ["amazing", "[MASK]", "by", "all", "actors", "highly", "recommended"]
     ]
-    
+
     model.eval()
     for i, text_tokens in enumerate(test_texts, 1):
         print(f'{i}. Original: {" ".join(text_tokens)}')
-        
+
         # Convert tokens to IDs
         input_ids = []
         for token in text_tokens:
@@ -360,22 +319,33 @@ def main():
                 input_ids.append(tokenizer.vocab[token])
             else:
                 input_ids.append(tokenizer.vocab['[UNK]'])
-        
+
         input_ids = torch.tensor([input_ids], dtype=torch.long).to(device)
-        
+
         # Get predictions
         with torch.no_grad():
             logits = model(input_ids)
-            
+
+            # Debug: Check logits values
+            print(f'   Logits shape: {logits.shape}')
+            print(f'   Logits min/max: {logits.min().item():.3f}/{logits.max().item():.3f}')
+            print(f'   Logits mean: {logits.mean().item():.3f}')
+
+            probs = F.softmax(logits, dim=-1)
+
+            # Debug: Check probabilities
+            print(f'   Probs min/max: {probs.min().item():.6f}/{probs.max().item():.6f}')
+            print(f'   Probs mean: {probs.mean().item():.6f}')
+
             # Find masked positions
             mask_token_id = tokenizer.vocab['[MASK]']
             masked_positions = (input_ids[0] == mask_token_id).nonzero(as_tuple=True)[0]
-            
+
             for pos in masked_positions:
                 top_k = 5
                 # Use logits directly for better numerical stability
                 top_logits, top_indices = torch.topk(logits[0, pos], top_k)
-                
+
                 print(f'   [MASK] at position {pos}:')
                 for j in range(top_k):
                     token_id = top_indices[j].item()
@@ -389,15 +359,15 @@ def main():
                     prob = F.softmax(top_logits, dim=0)[j].item()
                     print(f'     {token}: logit={logit:.3f}, prob={prob:.6f}')
         print()
-    
+
     # Plot training history if available
     if history is not None:
         print('\n=== Plotting Training History ===')
         # Use MLM-specific plotting function from utils
-        plot_mlm_results(history, save_path='.mlm_v1/training_history.png')
+        plot_mlm_results(history, save_path='.mlm_v0/training_history.png')
     else:
         print('\nNo training history available for plotting.')
 
 
 if __name__ == '__main__':
-    main()
+    main() 
