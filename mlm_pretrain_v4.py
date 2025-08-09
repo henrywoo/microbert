@@ -217,13 +217,13 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     # Create cache directory
     os.makedirs(cache_dir, exist_ok=True)
     
-    # Define dataset options in order of preference
+    # Define dataset options in order of preference (larger datasets first)
     dataset_options = [
-        {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},
-        {'name': 'bookcorpus', 'kwargs': {}},
-        {'name': 'wikipedia', 'kwargs': {'name': '20220301.en'}},
-        {'name': 'openwebtext', 'kwargs': {}},
-        {'name': 'pile-cc', 'kwargs': {'name': 'pile-cc'}}
+        {'name': 'openwebtext', 'kwargs': {}},  # ~8M documents, very large
+        {'name': 'wikipedia', 'kwargs': {'name': '20220301.en'}},  # ~6M articles
+        {'name': 'pile-cc', 'kwargs': {'name': 'pile-cc'}},  # Common Crawl data, very large
+        {'name': 'bookcorpus', 'kwargs': {}},  # ~11K books
+        {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens (smaller)
     ]
     
     def extract_text(item: dict) -> str | None:
@@ -287,8 +287,10 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
                 # Apply streaming shuffle
                 dataset = dataset.shuffle(seed=seed, buffer_size=10_000)
                 print("Applied streaming shuffle with buffer_size=10_000")
+                print(f"Dataset {ds_name} loaded in streaming mode")
             else:
                 dataset = load_dataset(ds_name, **ds_kwargs, split='train')
+                print(f"Dataset {ds_name} loaded with {len(dataset)} total samples")
             
             # Process dataset
             data = []
@@ -352,7 +354,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
     
     # Wrap model with DDP if using multiple GPUs (check world_size instead of device_count)
     if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
-        model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+        model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     
     # Initialize optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
@@ -569,9 +571,34 @@ def main():
     if torch.cuda.is_available():
         # Use the local_rank that was already validated in setup_distributed
         device = torch.device(f'cuda:{local_rank}')
+        
+        # Get GPU memory info and adjust configuration accordingly
+        gpu_memory = torch.cuda.get_device_properties(local_rank).total_memory / (1024**3)  # GB
+        if rank == 0:
+            print(f"GPU {local_rank} memory: {gpu_memory:.1f} GB")
+        
+        # Adjust batch size and model configuration based on available memory
+        if gpu_memory >= 100:  # 100GB+ GPU (like H200)
+            # Use larger configuration for high-memory GPUs
+            adjusted_batch_size = min(args.batch_size * 2, 256)  # Double batch size, max 256
+            model_scale = "large"
+        elif gpu_memory >= 40:  # 40GB+ GPU (like A100)
+            # Use medium configuration
+            adjusted_batch_size = args.batch_size
+            model_scale = "medium"
+        else:  # 24GB or less (like A10)
+            # Use smaller configuration
+            adjusted_batch_size = max(args.batch_size // 2, 32)  # Half batch size, min 32
+            model_scale = "small"
+        
+        if rank == 0:
+            print(f"Detected {gpu_memory:.1f}GB GPU, using {model_scale} configuration")
+            print(f"Adjusted batch size: {adjusted_batch_size} (original: {args.batch_size})")
     else:
         device = torch.device('cpu')
         local_rank = 0
+        adjusted_batch_size = args.batch_size
+        model_scale = "cpu"
     
     # Parse max_samples argument
     max_samples = None
@@ -585,25 +612,30 @@ def main():
             max_samples = int(max_samples_str)
         else:
             print(f"Unknown max_samples format: {args.max_samples}. Using default (10M)")
+            max_samples = 10000000
+    else:
+        max_samples = 10000000  # Default 10M
     
     # Print setup info (only on main process)
     if rank == 0:
-        print(f'Multi-GPU MLM Training v4 Setup (24GB Memory Optimized):')
+        print(f'Multi-GPU MLM Training v4 Setup (Dynamic Memory Optimization):')
         print(f'  - World Size: {world_size}')
         print(f'  - Local Rank: {local_rank}')
         print(f'  - Device: {device}')
         print(f'  - Dataset: {args.dataset}')
         print(f'  - Streaming: {args.streaming}')
-        print(f'  - Batch Size per GPU: {args.batch_size}')
-        print(f'  - Total Batch Size: {args.batch_size * world_size}')
+        print(f'  - Original Batch Size per GPU: {args.batch_size}')
+        print(f'  - Adjusted Batch Size per GPU: {adjusted_batch_size}')
+        print(f'  - Total Batch Size: {adjusted_batch_size * world_size}')
         print(f'  - Epochs: {args.epochs}')
         print(f'  - Learning Rate: {args.lr}')
-        print(f'  - Max Samples: {max_samples}')
+        print(f'  - Max Samples: {max_samples:,}')
+        print(f'  - Model Scale: {model_scale}')
     
     try:
         # Load data (only on main process)
         if rank == 0:
-            print(f'Loading dataset for MLM pre-training (choice: {args.dataset}, streaming: {args.streaming}, max_samples: {max_samples})...')
+            print(f'Loading dataset for MLM pre-training (choice: {args.dataset}, streaming: {args.streaming}, max_samples: {max_samples:,})...')
             train_data, test_data = load_text_data(args.dataset, streaming=args.streaming.lower() == 'true', max_samples=max_samples)
             
             # Use all data for MLM pre-training (unsupervised)
@@ -677,7 +709,7 @@ def main():
             
             train_loader = DataLoader(
                 train_dataset, 
-                batch_size=args.batch_size, 
+                batch_size=adjusted_batch_size, 
                 sampler=train_sampler,
                 num_workers=6,  # Optimized for 24GB memory
                 pin_memory=True,
@@ -685,34 +717,60 @@ def main():
             )
             val_loader = DataLoader(
                 val_dataset, 
-                batch_size=args.batch_size, 
+                batch_size=adjusted_batch_size, 
                 sampler=val_sampler,
                 num_workers=6,  # Optimized for 24GB memory
                 pin_memory=True,
                 prefetch_factor=2  # Added prefetch_factor for better performance
             )
         else:
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=6, pin_memory=True, prefetch_factor=2)
-            val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=6, pin_memory=True, prefetch_factor=2)
+            train_loader = DataLoader(train_dataset, batch_size=adjusted_batch_size, shuffle=True, num_workers=6, pin_memory=True, prefetch_factor=2)
+            val_loader = DataLoader(val_dataset, batch_size=adjusted_batch_size, shuffle=False, num_workers=6, pin_memory=True, prefetch_factor=2)
         
-        # Initialize model based on dataset choice (optimized for 24GB memory)
+        # Initialize model based on dataset choice and GPU memory
         if args.dataset.lower() == 'hf':
-            # Use medium model for Hugging Face datasets (optimized for 24GB GPU memory)
-            if rank == 0:
-                print("Using medium model configuration for Hugging Face dataset (optimized for 24GB GPU memory)...")
-            n_heads = 8
-            n_embed = 256  # Optimized for 24GB memory
-            n_layers = 8   # Optimized for 24GB memory
+            # Use configuration based on GPU memory
+            if model_scale == "large":  # 100GB+ GPU
+                if rank == 0:
+                    print("Using large model configuration for high-memory GPU (100GB+)...")
+                n_heads = 16
+                n_embed = 512  # Larger for high-memory GPUs
+                n_layers = 12  # More layers for high-memory GPUs
+            elif model_scale == "medium":  # 40GB+ GPU
+                if rank == 0:
+                    print("Using medium model configuration for medium-memory GPU (40GB+)...")
+                n_heads = 8
+                n_embed = 256  # Medium size
+                n_layers = 8   # Medium layers
+            else:  # 24GB or less
+                if rank == 0:
+                    print("Using small model configuration for low-memory GPU (24GB or less)...")
+                n_heads = 8
+                n_embed = 256  # Optimized for 24GB memory
+                n_layers = 8   # Optimized for 24GB memory
             head_size = n_embed // n_heads
             num_epochs = args.epochs
             learning_rate = args.lr
         else:
-            # Use medium model for IMDB dataset too
-            if rank == 0:
-                print("Using medium model configuration for IMDB dataset...")
-            n_heads = 4
-            n_embed = 128  # Optimized for 24GB memory
-            n_layers = 6   # Optimized for 24GB memory
+            # Use configuration based on GPU memory for IMDB dataset too
+            if model_scale == "large":  # 100GB+ GPU
+                if rank == 0:
+                    print("Using large model configuration for IMDB dataset (high-memory GPU)...")
+                n_heads = 8
+                n_embed = 256
+                n_layers = 8
+            elif model_scale == "medium":  # 40GB+ GPU
+                if rank == 0:
+                    print("Using medium model configuration for IMDB dataset (medium-memory GPU)...")
+                n_heads = 4
+                n_embed = 128
+                n_layers = 6
+            else:  # 24GB or less
+                if rank == 0:
+                    print("Using small model configuration for IMDB dataset (low-memory GPU)...")
+                n_heads = 4
+                n_embed = 128  # Optimized for 24GB memory
+                n_layers = 6   # Optimized for 24GB memory
             head_size = n_embed // n_heads
             num_epochs = args.epochs
             learning_rate = args.lr
@@ -724,13 +782,16 @@ def main():
                 print(f"Warning: n_embed adjusted to {n_embed} to be divisible by n_heads {n_heads}")
         
         if rank == 0:
-            print(f"Model configuration (v4 - 24GB optimized):")
+            print(f"Model configuration (v4 - Dynamic Memory Optimization):")
+            print(f"  - Model Scale: {model_scale}")
             print(f"  - n_heads: {n_heads}")
             print(f"  - n_embed: {n_embed}")
             print(f"  - n_layers: {n_layers}")
             print(f"  - head_size: {head_size}")
             print(f"  - num_epochs: {num_epochs}")
             print(f"  - learning_rate: {learning_rate}")
+            print(f"  - batch_size_per_gpu: {adjusted_batch_size}")
+            print(f"  - total_batch_size: {adjusted_batch_size * world_size}")
         
         model = MicroBertMLM(
             vocab_size=len(tokenizer.vocab),

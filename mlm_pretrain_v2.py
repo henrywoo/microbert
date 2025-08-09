@@ -169,14 +169,14 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     else:
         print("Using local download mode - data will be saved to disk (faster but uses more space)")
 
-    # 数据集与其可选配置（尽量选择公开可用、可流式）
+    # 数据集与其可选配置（尽量选择公开可用、可流式，按大小排序）
     candidates = [
         # (dataset_name, dict(kwargs_for_load_dataset))
-        ("wikitext",   {"name": "wikitext-103-raw-v1"}),
-        ("wikipedia",  {"name": "20220301.en"}),   # 如果失败可以换成其它快照，如 20231101.en
-        ("openwebtext", {}),
-        ("c4",         {"name": "en"}),
-        ("pile-cc",    {}),
+        ("openwebtext", {}),  # ~8M documents, very large
+        ("wikipedia",  {"name": "20220301.en"}),   # ~6M articles
+        ("pile-cc",    {}),  # Common Crawl data, very large
+        ("c4",         {"name": "en"}),  # Common Crawl data
+        ("wikitext",   {"name": "wikitext-103-raw-v1"}),  # ~1.8M tokens (smaller)
     ]
 
     def extract_text(item: dict) -> str | None:
@@ -247,16 +247,20 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
                 try:
                     ds = ds.shuffle(seed=seed, buffer_size=10_000)
                     print("Applied streaming shuffle with buffer_size=10_000")
+                    print(f"Dataset {ds_name} loaded in streaming mode")
                 except Exception as _:
                     # 某些数据集/版本可能不支持流式 shuffle，忽略即可
                     print("Streaming shuffle not supported, continuing without shuffle")
+                    print(f"Dataset {ds_name} loaded in streaming mode")
             else:
                 # 非streaming模式可以直接shuffle
                 try:
                     ds = ds.shuffle(seed=seed)
                     print("Applied local shuffle")
+                    print(f"Dataset {ds_name} loaded with {len(ds)} total samples")
                 except Exception as _:
                     print("Local shuffle failed, continuing without shuffle")
+                    print(f"Dataset {ds_name} loaded with {len(ds)} total samples")
 
             data = []
             kept = 0

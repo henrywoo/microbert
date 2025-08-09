@@ -217,13 +217,13 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     # Create cache directory
     os.makedirs(cache_dir, exist_ok=True)
     
-    # Define dataset options in order of preference
+    # Define dataset options in order of preference (larger datasets first)
     dataset_options = [
-        {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},
-        {'name': 'bookcorpus', 'kwargs': {}},
-        {'name': 'wikipedia', 'kwargs': {'name': '20220301.en'}},
-        {'name': 'openwebtext', 'kwargs': {}},
-        {'name': 'pile-cc', 'kwargs': {'name': 'pile-cc'}}
+        {'name': 'openwebtext', 'kwargs': {}},  # ~8M documents, very large
+        {'name': 'wikipedia', 'kwargs': {'name': '20220301.en'}},  # ~6M articles
+        {'name': 'pile-cc', 'kwargs': {'name': 'pile-cc'}},  # Common Crawl data, very large
+        {'name': 'bookcorpus', 'kwargs': {}},  # ~11K books
+        {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens (smaller)
     ]
     
     def extract_text(item: dict) -> str | None:
@@ -287,8 +287,10 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
                 # Apply streaming shuffle
                 dataset = dataset.shuffle(seed=seed, buffer_size=10_000)
                 print("Applied streaming shuffle with buffer_size=10_000")
+                print(f"Dataset {ds_name} loaded in streaming mode")
             else:
                 dataset = load_dataset(ds_name, **ds_kwargs, split='train')
+                print(f"Dataset {ds_name} loaded with {len(dataset)} total samples")
             
             # Process dataset
             data = []
