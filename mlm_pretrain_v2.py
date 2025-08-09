@@ -461,22 +461,50 @@ def main(dataset_choice='imdb', streaming=True):
     val_dataset = MLMDataset(val_data, tokenizer)
     
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
-    # Initialize model
-    # Ensure n_embed is divisible by n_heads for proper multi-head attention
-    n_heads = 1
-    n_embed = 3  # Changed from 3 to 4 so it's divisible by 2
-    head_size = n_embed // n_heads  # 4 // 2 = 2, which is better than 1
+    # Initialize model based on dataset choice
+    if dataset_choice.lower() == 'hf':
+        # Use larger model for Hugging Face datasets
+        print("Using larger model configuration for Hugging Face dataset...")
+        n_heads = 4
+        n_embed = 8
+        n_layers = 4
+        head_size = n_embed // n_heads  # 8 // 4 = 2
+        num_epochs = 5
+        learning_rate = 3e-5
+        batch_size = 16
+    else:
+        # Use smaller model for IMDB dataset
+        print("Using smaller model configuration for IMDB dataset...")
+        n_heads = 2
+        n_embed = 4
+        n_layers = 2
+        head_size = n_embed // n_heads  # 4 // 2 = 2
+        num_epochs = 3
+        learning_rate = 5e-5
+        batch_size = 16
+    
+    print(f"Model configuration:")
+    print(f"  - n_heads: {n_heads}")
+    print(f"  - n_embed: {n_embed}")
+    print(f"  - n_layers: {n_layers}")
+    print(f"  - head_size: {head_size}")
+    print(f"  - num_epochs: {num_epochs}")
+    print(f"  - learning_rate: {learning_rate}")
     
     model = MicroBertMLM(
         vocab_size=len(tokenizer.vocab),
-        n_layers=2,
+        n_layers=n_layers,
         n_heads=n_heads,
         n_embed=n_embed,
         max_seq_len=128
     ).to(device)
+    
+    # Calculate model parameters
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Total model parameters: {total_params:,}")
     
     # Check if model already exists
     if os.path.exists('.mlm_pretrained/mlm_model.pth'):
@@ -496,7 +524,7 @@ def main(dataset_choice='imdb', streaming=True):
     else:
         print('Starting MLM pre-training...')
         # Train model
-        history = train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3)
+        history = train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=num_epochs, learning_rate=learning_rate)
         print('MLM pre-training completed!')
     
     # Test the model with some examples

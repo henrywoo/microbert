@@ -122,21 +122,37 @@ python cache_manager.py usage
 
 ## Model Configurations
 
-### Default Configuration (mlm_pretrain_v1.py)
-- **Layers**: 2
-- **Heads**: 2
-- **Embedding Dimension**: 4
-- **Max Sequence Length**: 128
-- **Vocabulary Size**: 10,000
-- **Parameters**: ~41K
+The system automatically selects the appropriate model configuration based on the dataset:
 
-### Advanced Configuration (mlm_pretrain.py)
+### IMDB Configuration (mlm_pretrain_v1.py)
 - **Layers**: 2
 - **Heads**: 2
 - **Embedding Dimension**: 4
 - **Max Sequence Length**: 128
 - **Vocabulary Size**: 10,000
 - **Parameters**: ~41K
+- **Training Time**: ~5 minutes
+- **Use Case**: Learning, testing, small datasets
+
+### Hugging Face Configuration (mlm_pretrain_v2.py)
+- **Layers**: 4
+- **Heads**: 4
+- **Embedding Dimension**: 8
+- **Max Sequence Length**: 128
+- **Vocabulary Size**: 10,000
+- **Parameters**: ~84K
+- **Training Time**: ~30 minutes
+- **Use Case**: Large datasets, better performance
+
+### Available Configurations
+Run `python model_config_comparison.py` to see all available configurations:
+
+| Configuration | Layers | Heads | Embed | Parameters | Use Case |
+|---------------|--------|-------|-------|------------|----------|
+| **IMDB Small** | 2 | 2 | 4 | ~41K | IMDB dataset |
+| **HF Medium** | 4 | 4 | 8 | ~84K | HF datasets |
+| **HF Large** | 6 | 8 | 16 | ~182K | Large datasets |
+| **HF Extra Large** | 8 | 12 | 24 | ~301K | Very large datasets |
 
 ## Dataset Options
 
