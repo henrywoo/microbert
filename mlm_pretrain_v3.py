@@ -22,6 +22,7 @@ import torch.distributed as dist
 from torch.cuda.amp import GradScaler, autocast
 import time
 from pathlib import Path
+import datetime
 
 # Add current directory to path for imports
 import sys
@@ -490,11 +491,21 @@ def setup_distributed():
         world_size = int(os.environ['WORLD_SIZE'])
         local_rank = int(os.environ['LOCAL_RANK'])
         
-        # Initialize process group
-        dist.init_process_group(backend='nccl', rank=rank, world_size=world_size)
+        # Set environment variables to avoid warnings
+        os.environ['OMP_NUM_THREADS'] = '1'
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(local_rank)
         
-        # Set device
+        # Set device BEFORE initializing process group
         torch.cuda.set_device(local_rank)
+        
+        # Initialize process group with proper configuration to avoid warnings
+        dist.init_process_group(
+            backend='nccl', 
+            rank=rank, 
+            world_size=world_size,
+            init_method='env://',
+            timeout=datetime.timedelta(seconds=3600)  # 1 hour timeout
+        )
         
         return rank, world_size, local_rank
     else:
