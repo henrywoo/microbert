@@ -1,45 +1,45 @@
-# MicroBERT 模型使用指南
+# MicroBERT Model Usage Guide
 
-## 模型保存
+## Model Saving
 
-训练完成后，模型会自动保存到 `~/.microbert_model/` 目录下，包含以下文件：
+After training is completed, the model will be automatically saved to the `~/.microbert_model/` directory, containing the following files:
 
-- `microbert_classification.pth` - 模型权重文件
-- `tokenizer_vocab.json` - 分词器词汇表
-- `training_history.json` - 训练历史记录
-- `model_config.json` - 模型配置信息
+- `microbert_classification.pth` - Model weight file
+- `tokenizer_vocab.json` - Tokenizer vocabulary
+- `training_history.json` - Training history record
+- `model_config.json` - Model configuration information
 
-## 模型加载和使用
+## Model Loading and Usage
 
-### 1. 使用预测脚本
+### 1. Using Prediction Script
 
-运行预制的预测脚本：
+Run the pre-made prediction script:
 
 ```bash
 python predict.py
 ```
 
-这将加载训练好的模型并对示例文本进行情感分析。
+This will load the trained model and perform sentiment analysis on example text.
 
-### 2. 在代码中使用
+### 2. Using in Code
 
 ```python
 from microbert.utils import load_model, predict_sentiment
 
-# 加载模型
+# Load model
 model, tokenizer, config = load_model('~/.microbert_model')
 
-# 进行预测
+# Make prediction
 text = "This movie is amazing!"
 prediction, confidence = predict_sentiment(model, tokenizer, text)
 
-sentiment = "正面" if prediction == 1 else "负面"
-print(f"预测结果: {sentiment}, 置信度: {confidence:.3f}")
+sentiment = "Positive" if prediction == 1 else "Negative"
+print(f"Prediction result: {sentiment}, Confidence: {confidence:.3f}")
 ```
 
-### 3. 手动保存模型
+### 3. Manually Saving Model
 
-如果需要手动保存模型，可以使用：
+If you need to manually save the model, you can use:
 
 ```python
 from microbert.utils import save_model
@@ -58,23 +58,23 @@ config = {
 save_model(model, tokenizer, history, config, '~/my_model')
 ```
 
-## 文件说明
+## File Description
 
-### 模型权重文件 (.pth)
-包含训练好的神经网络权重参数。
+### Model Weight File (.pth)
+Contains the trained neural network weight parameters.
 
-### 词汇表文件 (.json)
-包含分词器使用的词汇表，用于文本预处理。
+### Vocabulary File (.json)
+Contains the vocabulary used by the tokenizer for text preprocessing.
 
-### 训练历史文件 (.json)
-包含训练过程中的损失、准确率、F1分数等指标。
+### Training History File (.json)
+Contains metrics such as loss, accuracy, F1 score during training.
 
-### 配置文件 (.json)
-包含模型架构和训练参数，用于重建模型结构。
+### Configuration File (.json)
+Contains model architecture and training parameters for rebuilding the model structure.
 
-## 注意事项
+## Notes
 
-1. 确保在加载模型时使用相同的模型架构参数
-2. 模型文件较大，请确保有足够的存储空间
-3. 建议定期备份训练好的模型文件
-4. 在不同设备间迁移时，注意设备兼容性（CPU/GPU） 
+1. Ensure to use the same model architecture parameters when loading the model
+2. Model files are large, please ensure sufficient storage space
+3. It is recommended to regularly backup trained model files
+4. When migrating between different devices, pay attention to device compatibility (CPU/GPU) 

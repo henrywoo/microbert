@@ -252,7 +252,7 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
         ]
     
     def extract_text(item: dict) -> str | None:
-        # 按常见字段顺序取文本
+        # Extract text in common field order
         text_fields = [
             'text', 'content', 'sentence', 'passage', 'article', 'question', 'context', 'title', 'summary',
             'review', 'review_text', 'body', 'document', 'raw_content', 'source', 'comment', 'description',

@@ -169,7 +169,7 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     else:
         print("Using local download mode - data will be saved to disk (faster but uses more space)")
 
-    # 数据集与其可选配置（尽量选择公开可用、可流式，按大小排序）
+    # Dataset with optional configurations (prioritize publicly available, streamable, sorted by size)
     # 为了开发/测试，优先选择较小的数据集以避免磁盘空间问题
     # 但如果max_samples很大，优先选择大数据集
     if max_samples and max_samples > 1_000_000:  # 如果请求超过1M样本

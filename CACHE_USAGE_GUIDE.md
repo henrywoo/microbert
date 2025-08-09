@@ -1,26 +1,26 @@
-# MicroBERT 缓存使用指南
+# MicroBERT Cache Usage Guide
 
-## 问题描述
+## Problem Description
 
-你遇到的"重复处理数据"问题主要有以下几个原因：
+The "repeated data processing" issue you encountered has the following main reasons:
 
-### 1. 缓存键不匹配
-每次运行时如果使用不同的参数，会生成不同的缓存键：
-- `max_samples` 不同
-- `min_words` 不同  
-- `seed` 不同
-- 数据集参数不同
+### 1. Cache Key Mismatch
+Each time you run with different parameters, different cache keys will be generated:
+- `max_samples` different
+- `min_words` different  
+- `seed` different
+- Dataset parameters different
 
-### 2. 多数据集策略
-即使从缓存加载了足够的数据，代码仍会尝试其他数据集，导致重复的"processed xxx samples"消息。
+### 2. Multi-Dataset Strategy
+Even after loading sufficient data from cache, the code will still try other datasets, resulting in repeated "processed xxx samples" messages.
 
-## 解决方案
+## Solutions
 
-### 1. 使用一致的参数
-确保每次运行时使用相同的参数：
+### 1. Use Consistent Parameters
+Ensure to use the same parameters each time you run:
 
 ```bash
-# 推荐：使用固定的参数组合
+# Recommended: Use fixed parameter combinations
 python mlm_pretrain_v4.py \
     --dataset hf \
     --max-samples 10M \
@@ -29,31 +29,31 @@ python mlm_pretrain_v4.py \
     --streaming true
 ```
 
-### 2. 检查缓存状态
-使用缓存管理器查看当前缓存：
+### 2. Check Cache Status
+Use the cache manager to view current cache:
 
 ```bash
-# 查看缓存信息
+# View cache information
 python cache_manager.py info
 
-# 查看特定配置的缓存键
+# View cache key for specific configuration
 python cache_manager.py key --ds-name c4 --ds-kwargs '{"name": "en"}' --max-samples 10000000
 ```
 
-### 3. 缓存键生成规则
-缓存键基于以下参数生成：
+### 3. Cache Key Generation Rules
+Cache keys are generated based on the following parameters:
 ```python
 config_str = f"{ds_name}_{str(ds_kwargs)}_{max_samples}_{min_words}_{seed}"
 cache_key = hashlib.md5(config_str.encode()).hexdigest()[:16]
 ```
 
-## 最佳实践
+## Best Practices
 
-### 1. 参数标准化
-创建配置文件或脚本，确保参数一致：
+### 1. Parameter Standardization
+Create configuration files or scripts to ensure parameter consistency:
 
 ```bash
-# 创建标准训练脚本
+# Create standard training script
 cat > train_standard.sh << 'EOF'
 #!/bin/bash
 python mlm_pretrain_v4.py \

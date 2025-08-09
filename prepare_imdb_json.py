@@ -2,10 +2,10 @@ from datasets import load_dataset
 import json
 from microbert.tokenizer import WordTokenizer
 
-# 加载原始 IMDb 数据
+# Load original IMDb data
 dataset = load_dataset("imdb")
 
-# 收集词表（注意这里用了一个简单的 word splitter）
+# Collect vocabulary (note: using a simple word splitter here)
 def build_vocab(data):
     vocab = set()
     for example in data:
@@ -13,22 +13,22 @@ def build_vocab(data):
         vocab.update(words)
     return list(vocab)
 
-# 从训练集构建词表
+# Build vocabulary from training set
 vocab = build_vocab(dataset["train"])
 tokenizer = WordTokenizer(vocab=vocab, sep=' ', max_seq_len=128)
 
-# 将每条样本转换为 tokenized 格式（但我们这里只存原始 tokens 和标签）
+# Convert each sample to tokenized format (but here we only store original tokens and labels)
 def to_json_format(example):
     return {
-        "text": example["text"].lower().split(),  # 不再用 nltk，而是和 tokenizer 的逻辑一致
+        "text": example["text"].lower().split(),  # No longer using nltk, but consistent with tokenizer logic
         "label": "pos" if example["label"] == 1 else "neg"
     }
 
-# 构建数据集
+# Build dataset
 train_data = [to_json_format(example) for example in dataset["train"]]
 test_data = [to_json_format(example) for example in dataset["test"]]
 
-# 保存 JSONL 文件
+# Save JSONL files
 with open("imdb_train.json", "w") as f:
     for item in train_data:
         f.write(json.dumps(item) + "\n")

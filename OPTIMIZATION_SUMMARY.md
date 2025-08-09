@@ -1,108 +1,108 @@
-# MLM Pre-training 优化总结
+# MLM Pre-training Optimization Summary
 
-## 问题分析
-原始训练中loss下降很慢的主要原因：
+## Problem Analysis
+The main reasons why the loss decreases slowly in the original training:
 
-1. **学习率过低**: 原始学习率 `5e-5` 对于MLM预训练来说太低了
-2. **模型容量不足**: 2层，4维embedding对于25万词汇量的任务来说太小了
-3. **优化器配置不够优化**: 缺少权重衰减等正则化
-4. **梯度裁剪过严**: 阈值1.0可能过于严格
+1. **Learning rate too low**: The original learning rate `5e-5` is too low for MLM pre-training
+2. **Insufficient model capacity**: 2 layers, 4-dimensional embedding is too small for a 250K vocabulary task
+3. **Suboptimal optimizer configuration**: Missing weight decay and other regularization
+4. **Too strict gradient clipping**: Threshold 1.0 may be too strict
 
-## 优化措施
+## Optimization Measures
 
-### 1. 学习率优化
-- **原始**: `5e-5`
-- **优化后**: `1e-4` (提高20倍)
-- **原因**: MLM预训练通常需要更高的学习率来快速收敛
+### 1. Learning Rate Optimization
+- **Original**: `5e-5`
+- **After optimization**: `1e-4` (20x increase)
+- **Reason**: MLM pre-training typically requires higher learning rates for fast convergence
 
-### 2. 模型架构优化 (平衡版本)
-- **层数**: 2 → 2 层 (保持micro特性)
-- **注意力头数**: 2 → 2 头 (保持micro特性)  
-- **Embedding维度**: 4 → 16 维 (适度增加，平衡性能和大小)
-- **总参数量**: 从 ~2.3M 增加到 ~8.3M (增加3.6倍，但远小于原始34M)
+### 2. Model Architecture Optimization (Balanced Version)
+- **Layers**: 2 → 2 layers (maintain micro characteristics)
+- **Attention heads**: 2 → 2 heads (maintain micro characteristics)  
+- **Embedding dimensions**: 4 → 16 dimensions (moderate increase, balance performance and size)
+- **Total parameters**: From ~2.3M to ~8.3M (3.6x increase, but much smaller than original 34M)
 
-### 3. 优化器配置优化
-- **权重衰减**: 添加 `weight_decay=0.01`
-- **Beta参数**: 明确设置 `betas=(0.9, 0.999)`
-- **梯度裁剪**: 从1.0增加到5.0
+### 3. Optimizer Configuration Optimization
+- **Weight decay**: Add `weight_decay=0.01`
+- **Beta parameters**: Explicitly set `betas=(0.9, 0.999)`
+- **Gradient clipping**: Increase from 1.0 to 5.0
 
-### 4. 训练策略优化
+### 4. Training Strategy Optimization
 - **Batch Size**: 16 → 32
-- **数据加载**: 添加 `num_workers=2`
-- **早停机制**: 添加patience=3的早停
-- **学习率调度**: 保持10% warmup
+- **Data loading**: Add `num_workers=2`
+- **Early stopping**: Add patience=3 early stopping
+- **Learning rate scheduling**: Maintain 10% warmup
 
-### 5. 监控改进
-- **学习率跟踪**: 在训练过程中显示当前学习率
-- **早停提示**: 显示无改进的epoch数
-- **最佳模型保存**: 自动保存验证集最佳模型
+### 5. Monitoring Improvements
+- **Learning rate tracking**: Display current learning rate during training
+- **Early stopping prompts**: Show number of epochs without improvement
+- **Best model saving**: Automatically save the best model on validation set
 
-## 参数配置对比
+## Parameter Configuration Comparison
 
-| 配置 | 层数 | 头数 | 维度 | 参数量 | 内存使用 |
-|------|------|------|------|--------|----------|
-| 原始 | 2 | 1 | 4 | ~2.3M | ~9MB |
-| 过大版本 | 4 | 4 | 64 | ~32.7M | ~125MB |
-| **优化版本** | **2** | **2** | **16** | **~8.3M** | **~32MB** |
-| 超小版本 | 1 | 1 | 8 | ~4.3M | ~16MB |
+| Configuration | Layers | Heads | Dimensions | Parameters | Memory Usage |
+|---------------|--------|-------|------------|------------|--------------|
+| Original | 2 | 1 | 4 | ~2.3M | ~9MB |
+| Oversized Version | 4 | 4 | 64 | ~32.7M | ~125MB |
+| **Optimized Version** | **2** | **2** | **16** | **~8.3M** | **~32MB** |
+| Ultra-small Version | 1 | 1 | 8 | ~4.3M | ~16MB |
 
-## 预期效果
+## Expected Results
 
-### Loss下降速度
-- **原始**: 每个epoch下降约0.1-0.2
-- **优化后**: 预期每个epoch下降0.3-0.6
+### Loss Decrease Rate
+- **Original**: Each epoch decreases by about 0.1-0.2
+- **After optimization**: Expected to decrease by 0.3-0.6 per epoch
 
-### 收敛速度
-- **原始**: 可能需要20+ epochs才能收敛
-- **优化后**: 预期8-15 epochs就能收敛
+### Convergence Speed
+- **Original**: May need 20+ epochs to converge
+- **After optimization**: Expected to converge in 8-15 epochs
 
-### 模型性能
-- **原始**: 由于容量不足，可能无法充分学习
-- **优化后**: 适度的模型容量能更好地捕捉语言模式，同时保持micro特性
+### Model Performance
+- **Original**: Due to insufficient capacity, may not learn adequately
+- **After optimization**: Moderate model capacity can better capture language patterns while maintaining micro characteristics
 
-## 使用方法
+## Usage Methods
 
-### 运行优化后的训练
+### Run Optimized Training
 ```bash
 python mlm_pretrain_v1.py
 ```
 
-### 强制重新开始训练
+### Force Fresh Training Start
 ```bash
 python mlm_pretrain_v1.py --force-fresh
 ```
 
-### 快速测试优化参数
+### Quick Test of Optimized Parameters
 ```bash
 python quick_test_v1_optimized.py
 ```
 
-### 计算模型参数
+### Calculate Model Parameters
 ```bash
 python calculate_model_params.py
 ```
 
-## 注意事项
+## Notes
 
-1. **内存使用**: 模型参数量适度增加，从2.3M到8.3M，仍然保持micro特性
-2. **训练时间**: 虽然收敛更快，但每个epoch可能稍慢
-3. **过拟合风险**: 适度的模型容量需要适度的正则化，已添加权重衰减
-4. **Micro特性**: 新配置仍然保持micro模型的特性，参数量远小于标准BERT
+1. **Memory usage**: Model parameter count moderately increases from 2.3M to 8.3M, still maintaining micro characteristics
+2. **Training time**: Although convergence is faster, each epoch may be slightly slower
+3. **Overfitting risk**: Moderate model capacity requires moderate regularization, weight decay has been added
+4. **Micro characteristics**: The new configuration still maintains micro model characteristics, parameter count is much smaller than standard BERT
 
-## 监控指标
+## Monitoring Metrics
 
-训练过程中会显示：
+During training, the following will be displayed:
 - Train Loss
 - Val Loss  
 - Learning Rate
-- 早停状态
-- 最佳模型保存提示
+- Early stopping status
+- Best model saving prompts
 
-## 为什么选择这个配置？
+## Why Choose This Configuration?
 
-1. **保持Micro特性**: 8.3M参数仍然远小于标准BERT的110M+参数
-2. **性能提升**: 16维embedding比4维能更好地表示词汇
-3. **训练效率**: 适度的容量能更快收敛，避免过小模型的学习困难
-4. **内存友好**: 32MB内存使用对大多数GPU都很友好
+1. **Maintain Micro Characteristics**: 8.3M parameters are still much smaller than standard BERT's 110M+ parameters
+2. **Performance Improvement**: 16-dimensional embedding can better represent vocabulary than 4-dimensional
+3. **Training Efficiency**: Moderate capacity can converge faster, avoiding learning difficulties of overly small models
+4. **Memory Friendly**: 32MB memory usage is friendly to most GPUs
 
-这些优化应该能显著改善训练loss下降慢的问题，同时保持模型的micro特性！
+These optimizations should significantly improve the slow loss decrease problem during training while maintaining the model's micro characteristics!
