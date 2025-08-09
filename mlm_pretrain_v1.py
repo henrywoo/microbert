@@ -316,7 +316,7 @@ def main():
     else:
         print('Starting MLM pre-training...')
         # Train model
-        history = train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3)
+        history = train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=10)
         print('MLM pre-training completed!')
     
     # Test the model with some examples
