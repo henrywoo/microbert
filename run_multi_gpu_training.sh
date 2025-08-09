@@ -74,9 +74,4 @@ torchrun \
 echo "Training completed!"
 echo "Results saved to: .mlm_pretrained_v3/"
 echo "Log file: $LOG_FILE"
-
-# Optional: Show GPU utilization summary
 echo "=========================================="
-echo "GPU Utilization Summary"
-echo "=========================================="
-nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv

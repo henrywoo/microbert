@@ -68,12 +68,7 @@ torchrun \
     --max-samples $MAX_SAMPLES \
     2>&1 | tee $LOG_FILE
 
-echo "MicroBERT v4 training completed!"
+echo "Training completed!"
 echo "Results saved to: .mlm_pretrained_v4/"
 echo "Log file: $LOG_FILE"
-
-# Show GPU utilization summary
 echo "=========================================="
-echo "GPU Utilization Summary"
-echo "=========================================="
-nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv
