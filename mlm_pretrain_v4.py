@@ -37,6 +37,8 @@ except ImportError:
         print(f"Total parameters: {sum(p.numel() for p in model.parameters()):,}")
 
 
+
+
 class MicroBertMLM(nn.Module):
     """MicroBERT for Masked Language Modeling - v4 optimized for 24GB memory"""
     
@@ -470,9 +472,15 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
     # Initialize optimizer and scheduler
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     total_steps = len(train_loader) * num_epochs
-    scheduler = torch.optim.lr_scheduler.get_linear_schedule_with_warmup(
+    
+    # Use transformers scheduler - the standard and clean approach
+    from transformers import get_linear_schedule_with_warmup
+    
+    scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=total_steps // 10, num_training_steps=total_steps
     )
+    if local_rank == 0:
+        print("Using transformers linear schedule with warmup")
     
     # Initialize gradient scaler for mixed precision training
     scaler = torch.cuda.amp.GradScaler()
