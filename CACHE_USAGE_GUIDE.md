@@ -70,65 +70,65 @@ EOF
 chmod +x train_standard.sh
 ```
 
-### 2. 缓存预热
-首次运行时，让数据完全下载并缓存：
+### 2. Cache Warming
+On first run, let the data download and cache completely:
 
 ```bash
-# 第一次运行（会下载并缓存）
+# First run (will download and cache)
 ./train_standard.sh
 
-# 后续运行（使用缓存）
+# Subsequent runs (use cache)
 ./train_standard.sh
 ```
 
-### 3. 监控缓存命中
-观察输出中的缓存信息：
+### 3. Monitor Cache Hits
+Observe cache information in the output:
 ```
 ✓ Loaded 500,000 samples from cache for c4
 ✓ Used 500,000 samples from cache, total so far: 500,000
 ✓ Reached target sample count (500,000) from cache, stopping dataset loading
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 1. 缓存未命中
-如果看到"Cache MISS"，检查：
-- 参数是否与之前运行一致
-- 缓存文件是否存在
-- 缓存文件是否损坏
+### 1. Cache Miss
+If you see "Cache MISS", check:
+- Whether parameters are consistent with previous runs
+- Whether cache files exist
+- Whether cache files are corrupted
 
-### 2. 重复下载
-如果仍然重复下载：
-- 检查 `max_samples` 参数
-- 确认 `seed` 值一致
-- 验证数据集名称和参数
+### 2. Repeated Downloads
+If downloads still repeat:
+- Check the `max_samples` parameter
+- Confirm `seed` value is consistent
+- Verify dataset name and parameters
 
-### 3. 清理缓存
-如果需要重新开始：
+### 3. Clear Cache
+If you need to start over:
 ```bash
-# 清理所有缓存
+# Clear all cache
 python cache_manager.py clear --no-confirm
 
-# 清理特定缓存文件
+# Clear specific cache file
 python cache_manager.py clear --file 52719dbb61cb7957.json
 ```
 
-## 性能优化
+## Performance Optimization
 
-### 1. 缓存大小控制
-- 每个数据集最多缓存100万样本
-- 避免缓存文件过大
-- 定期清理不需要的缓存
+### 1. Cache Size Control
+- Cache up to 1 million samples per dataset
+- Avoid overly large cache files
+- Regularly clean up unnecessary cache
 
-### 2. 流式模式
-- 使用 `--streaming true` 避免完整下载
-- 数据按需加载，节省磁盘空间
-- 支持大规模数据集
+### 2. Streaming Mode
+- Use `--streaming true` to avoid complete downloads
+- Load data on-demand, saving disk space
+- Support large-scale datasets
 
-### 3. 内存管理
-- 根据GPU内存调整批次大小
-- 使用适当的序列长度
-- 监控GPU内存使用
+### 3. Memory Management
+- Adjust batch size based on GPU memory
+- Use appropriate sequence lengths
+- Monitor GPU memory usage
 
 ## 示例工作流
 

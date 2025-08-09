@@ -42,48 +42,48 @@ pip install -e .
 
 ## Quick Start
 
-### 🎯 **选择适合你的训练脚本**
+### 🎯 **Choose the Right Training Script**
 
-根据你的需求和硬件配置，选择以下四个版本之一：
+Based on your needs and hardware configuration, choose one of the following four versions:
 
-#### **v1: 快速入门 (IMDB数据集)**
+#### **v1: Quick Start (IMDB Dataset)**
 ```bash
-# 使用IMDB数据集进行快速训练
+# Quick training with IMDB dataset
 python mlm_pretrain_v1.py
 ```
-- **适用场景**: 学习、测试、快速验证
-- **数据集**: IMDB电影评论 (~25K样本)
-- **模型**: 小模型 (2层, 2头, 4维嵌入)
-- **训练时间**: ~5分钟
-- **内存需求**: 低
+- **Use Case**: Learning, testing, quick validation
+- **Dataset**: IMDB movie reviews (~25K samples)
+- **Model**: Small model (2 layers, 2 heads, 4-dim embeddings)
+- **Training Time**: ~5 minutes
+- **Memory Requirements**: Low
 
-#### **v2: 标准训练 (Hugging Face数据集)**
+#### **v2: Standard Training (Hugging Face Datasets)**
 ```bash
-# 使用Hugging Face大数据集 (默认500K样本)
+# Use Hugging Face large datasets (default 500K samples)
 python mlm_pretrain_v2.py hf
 
-# 指定数据大小 (5M样本)
+# Specify data size (5M samples)
 python mlm_pretrain_v2.py hf true 5M
 
-# 指定数据大小 (50M样本)
+# Specify data size (50M samples)
 python mlm_pretrain_v2.py hf false 50M
 
-# 或使用IMDB数据集
+# Or use IMDB dataset
 python mlm_pretrain_v2.py imdb
 ```
-- **适用场景**: 标准训练、中等规模数据集
-- **数据集**: Hugging Face数据集 (可配置大小: 500K-500M样本) 或 IMDB
-- **模型**: 中等模型 (4层, 4头, 8维嵌入) 或小模型
-- **训练时间**: ~30分钟 (500K) / ~2小时 (5M) / ~20小时 (50M)
-- **内存需求**: 中等
+- **Use Case**: Standard training, medium-scale datasets
+- **Dataset**: Hugging Face datasets (configurable size: 500K-500M samples) or IMDB
+- **Model**: Medium model (4 layers, 4 heads, 8-dim embeddings) or small model
+- **Training Time**: ~30 minutes (500K) / ~2 hours (5M) / ~20 hours (50M)
+- **Memory Requirements**: Medium
 
-#### **v3: 多GPU训练 (H200 8卡)**
+#### **v3: Multi-GPU Training (H200 8-Card)**
 ```bash
-# 使用预配置脚本 (推荐)
+# Use pre-configured script (recommended)
 python multi_gpu_configs.py generate h200_8gpu_standard
 ./train_h200_8gpu_standard.sh
 
-# 或直接使用torchrun (默认500K样本)
+# Or use torchrun directly (default 500K samples)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -98,19 +98,19 @@ torchrun \
     --streaming true \
     --max-samples 500k
 ```
-- **适用场景**: 多GPU训练、大规模数据集
-- **数据集**: Hugging Face数据集 (可配置大小: 500K-50M样本) 或 IMDB
-- **模型**: 中等模型 (6层, 8头, 16维嵌入) 或小模型
-- **训练时间**: ~15分钟 (500K) / ~1.3小时 (5M) / ~13小时 (50M)
-- **内存需求**: 中等
-- **GPU要求**: 8卡H200或类似配置
+- **Use Case**: Multi-GPU training, large-scale datasets
+- **Dataset**: Hugging Face datasets (configurable size: 500K-50M samples) or IMDB
+- **Model**: Medium model (6 layers, 8 heads, 16-dim embeddings) or small model
+- **Training Time**: ~15 minutes (500K) / ~1.3 hours (5M) / ~13 hours (50M)
+- **Memory Requirements**: Medium
+- **GPU Requirements**: 8-card H200 or similar configuration
 
-#### **v4: 24GB内存优化训练 (H200/A10兼容)**
+#### **v4: 24GB Memory Optimized Training (H200/A10 Compatible)**
 ```bash
-# 使用预配置脚本 (推荐)
+# Use pre-configured script (recommended)
 ./train_h200_8gpu_v4.sh
 
-# 或直接使用torchrun (24GB内存优化)
+# Or use torchrun directly (24GB memory optimized)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -125,15 +125,15 @@ torchrun \
     --streaming true \
     --max-samples 10M
 ```
-- **适用场景**: 24GB GPU内存优化训练 (H200/A10兼容)
-- **数据集**: Hugging Face数据集 (可配置大小: 500K-50M样本) 或 IMDB
-- **模型**: 动态配置 (根据GPU内存自动调整)
-  - **大模型** (100GB+ GPU): 4层, 8头, 128维嵌入, batch_size=16
-  - **中等模型** (40GB+ GPU): 6层, 8头, 128维嵌入, batch_size=32
-  - **小模型** (24GB GPU): 4层, 8头, 128维嵌入, batch_size=8
-- **训练时间**: ~15分钟 (10M样本)
-- **内存需求**: 非常保守配置，确保单卡内存使用不超过24GB
-- **GPU要求**: 24GB+ GPU (H200, A10, RTX 4090等)
+- **Use Case**: 24GB GPU memory optimized training (H200/A10 compatible)
+- **Dataset**: Hugging Face datasets (configurable size: 500K-50M samples) or IMDB
+- **Model**: Dynamic configuration (automatically adjusted based on GPU memory)
+  - **Large Model** (100GB+ GPU): 4 layers, 8 heads, 128-dim embeddings, batch_size=16
+  - **Medium Model** (40GB+ GPU): 6 layers, 8 heads, 128-dim embeddings, batch_size=32
+  - **Small Model** (24GB GPU): 4 layers, 8 heads, 128-dim embeddings, batch_size=8
+- **Training Time**: ~15 minutes (10M samples)
+- **Memory Requirements**: Very conservative configuration, ensuring single card memory usage doesn't exceed 24GB
+- **GPU Requirements**: 24GB+ GPU (H200, A10, RTX 4090, etc.)
 
 ## Project Structure
 
@@ -144,10 +144,10 @@ microbert/
 │   ├── model.py                 # BERT model implementation
 │   ├── tokenizer.py             # Word-level tokenizer
 │   └── utils.py                 # Utility functions
-├── mlm_pretrain_v1.py           # v1: IMDB-only MLM training (快速入门)
-├── mlm_pretrain_v2.py           # v2: Standard MLM training with dataset options (标准训练)
-├── mlm_pretrain_v3.py           # v3: Multi-GPU MLM training (多GPU训练)
-├── mlm_pretrain_v4.py           # v4: 24GB memory optimized MLM training (24GB内存优化)
+├── mlm_pretrain_v1.py           # v1: IMDB-only MLM training (Quick Start)
+├── mlm_pretrain_v2.py           # v2: Standard MLM training with dataset options (Standard Training)
+├── mlm_pretrain_v3.py           # v3: Multi-GPU MLM training (Multi-GPU Training)
+├── mlm_pretrain_v4.py           # v4: 24GB memory optimized MLM training (24GB Memory Optimized)
 ├── multi_gpu_configs.py         # Multi-GPU training configurations
 ├── run_multi_gpu_training.sh    # Multi-GPU training launcher
 ├── train_h200_8gpu_standard.sh  # H200 8-GPU standard training script
@@ -170,55 +170,55 @@ microbert/
 
 ## Usage Examples
 
-### 🎯 **v1: 快速入门训练 (IMDB数据集)**
+### 🎯 **v1: Quick Start Training (IMDB Dataset)**
 
 ```bash
-# 使用IMDB数据集进行快速训练
+# Quick training with IMDB dataset
 python mlm_pretrain_v1.py
 ```
 
-**特点:**
-- 使用25K IMDB电影评论
-- 小模型: 2层, 2头, 4维嵌入
-- 快速训练 (~5分钟)
-- 适合学习和测试
+**Features:**
+- Uses 25K IMDB movie reviews
+- Small model: 2 layers, 2 heads, 4-dim embeddings
+- Fast training (~5 minutes)
+- Suitable for learning and testing
 
-### 🚀 **v2: 标准训练 (Hugging Face数据集)**
+### 🚀 **v2: Standard Training (Hugging Face Datasets)**
 
 ```bash
-# 使用Hugging Face大数据集 (流式模式)
+# Use Hugging Face large datasets (streaming mode)
 python mlm_pretrain_v2.py hf
 
-# 使用Hugging Face大数据集 (本地下载模式)
+# Use Hugging Face large datasets (local download mode)
 python mlm_pretrain_v2.py hf false
 
-# 使用IMDB数据集
+# Use IMDB dataset
 python mlm_pretrain_v2.py imdb
 ```
 
-**特点:**
-- 支持多种数据集: wikitext, wikipedia, openwebtext等
-- 中等模型: 4层, 4头, 8维嵌入 (HF) 或 2层, 2头, 4维嵌入 (IMDB)
-- 自动缓存和流式处理
-- 训练时间: ~30分钟 (HF) / ~5分钟 (IMDB)
+**Features:**
+- Supports multiple datasets: wikitext, wikipedia, openwebtext, etc.
+- Medium model: 4 layers, 4 heads, 8-dim embeddings (HF) or 2 layers, 2 heads, 4-dim embeddings (IMDB)
+- Automatic caching and streaming processing
+- Training time: ~30 minutes (HF) / ~5 minutes (IMDB)
 
-### ⚡ **v3: 多GPU训练 (H200 8卡)**
+### ⚡ **v3: Multi-GPU Training (H200 8-Card)**
 
-#### **方法1: 使用预配置脚本**
+#### **Method 1: Use Pre-configured Scripts**
 ```bash
-# 查看可用配置
+# View available configurations
 python multi_gpu_configs.py list
 
-# 生成H200 8-GPU训练脚本
+# Generate H200 8-GPU training script
 python multi_gpu_configs.py generate h200_8gpu_standard
 
-# 运行训练
+# Run training
 ./train_h200_8gpu_standard.sh
 ```
 
-#### **方法2: 直接使用torchrun**
+#### **Method 2: Use torchrun Directly**
 ```bash
-# H200 8-GPU标准训练 (默认500K样本)
+# H200 8-GPU standard training (default 500K samples)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -233,7 +233,7 @@ torchrun \
     --streaming true \
     --max-samples 500k
 
-# 指定数据大小 (5M样本)
+# Specify data size (5M samples)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -249,33 +249,33 @@ torchrun \
     --max-samples 5M
 ```
 
-#### **方法3: 使用通用脚本**
+#### **Method 3: Use Generic Script**
 ```bash
-# 使用默认H200 8-GPU设置
+# Use default H200 8-GPU settings
 ./run_multi_gpu_training.sh
 
-# 或自定义参数
+# Or customize parameters
 ./run_multi_gpu_training.sh hf 32 5 3e-5 true
 ```
 
-**特点:**
-- 支持多GPU分布式训练
-- 大模型: 6层, 8头, 16维嵌入
-- 混合精度训练
-- 自动GPU检测和配置
-- 训练时间: ~30分钟 (8GPU)
+**Features:**
+- Supports multi-GPU distributed training
+- Large model: 6 layers, 8 heads, 16-dim embeddings
+- Mixed precision training
+- Automatic GPU detection and configuration
+- Training time: ~30 minutes (8GPU)
 
-### 🚀 **v4: 24GB内存优化训练 (H200/A10兼容)**
+### 🚀 **v4: 24GB Memory Optimized Training (H200/A10 Compatible)**
 
-#### **方法1: 使用预配置脚本 (推荐)**
+#### **Method 1: Use Pre-configured Script (Recommended)**
 ```bash
-# 运行24GB内存优化训练
+# Run 24GB memory optimized training
 ./train_h200_8gpu_v4.sh
 ```
 
-#### **方法2: 直接使用torchrun**
+#### **Method 2: Use torchrun Directly**
 ```bash
-# 24GB内存优化训练 (10M样本)
+# 24GB memory optimized training (10M samples)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -290,7 +290,7 @@ torchrun \
     --streaming true \
     --max-samples 10M
 
-# 自定义数据大小 (5M样本)
+# Customize data size (5M samples)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -306,9 +306,9 @@ torchrun \
     --max-samples 5M
 ```
 
-#### **方法3: 单GPU训练 (适合A10)**
+#### **Method 3: Single GPU Training (Suitable for A10)**
 ```bash
-# 单GPU 24GB优化训练
+# Single GPU 24GB optimized training
 python mlm_pretrain_v4.py \
     --dataset hf \
     --batch-size 96 \
@@ -318,32 +318,32 @@ python mlm_pretrain_v4.py \
     --max-samples 10M
 ```
 
-**特点:**
-- **专门针对24GB+ GPU优化** (H200, A10, RTX 4090等)
-- **大模型配置**: 8层, 8头, 256维嵌入
-- **高内存利用率**: 83% (20GB/24GB)
-- **大批次训练**: 96 per GPU (总768)
-- **长序列支持**: 256 tokens
-- **大词汇表**: 25K词汇
-- **快速训练**: ~20分钟 (10M样本)
-- **混合精度训练**: bfloat16优化
-- **分布式训练**: 支持多GPU
-- **自动缓存**: 智能数据缓存系统
+**Features:**
+- **Specifically optimized for 24GB+ GPUs** (H200, A10, RTX 4090, etc.)
+- **Large model configuration**: 8 layers, 8 heads, 256-dim embeddings
+- **High memory utilization**: 83% (20GB/24GB)
+- **Large batch training**: 96 per GPU (total 768)
+- **Long sequence support**: 256 tokens
+- **Large vocabulary**: 25K words
+- **Fast training**: ~20 minutes (10M samples)
+- **Mixed precision training**: bfloat16 optimization
+- **Distributed training**: Supports multi-GPU
+- **Automatic caching**: Intelligent data caching system
 
-**适用场景:**
-- 24GB+ GPU环境 (H200, A10, RTX 4090等)
-- 高内存利用率需求
-- 大规模模型训练
-- 生产环境部署
-- 需要快速训练的大数据集
+**Use Cases:**
+- 24GB+ GPU environments (H200, A10, RTX 4090, etc.)
+- High memory utilization requirements
+- Large-scale model training
+- Production environment deployment
+- Large datasets requiring fast training
 
-**性能优势:**
-- **内存利用率**: 从12%提升到83%
-- **模型复杂度**: 150倍增加 (从100K到15M参数)
-- **训练效率**: 显著提升
-- **数据吞吐**: 10倍增加
-- **序列长度**: 2倍增加 (128→256)
-- **词汇表**: 2.5倍增加 (10K→25K)
+**Performance Advantages:**
+- **Memory utilization**: Increased from 12% to 83%
+- **Model complexity**: 150x increase (from 100K to 15M parameters)
+- **Training efficiency**: Significantly improved
+- **Data throughput**: 10x increase
+- **Sequence length**: 2x increase (128→256)
+- **Vocabulary size**: 2.5x increase (10K→25K)
 
 ### 3. Test Streaming Functionality
 ```bash
@@ -367,21 +367,21 @@ python cache_manager.py clear
 python cache_manager.py usage
 ```
 
-## 🎯 **详细运行指南**
+## 🎯 **Detailed Running Guide**
 
-### **v1: 快速入门训练**
+### **v1: Quick Start Training**
 
-**适用场景**: 学习、测试、快速验证
+**Use Case**: Learning, testing, quick validation
 
 ```bash
-# 基本运行
+# Basic run
 python mlm_pretrain_v1.py
 
-# 查看帮助
+# View help
 python mlm_pretrain_v1.py --help
 ```
 
-**输出示例:**
+**Output Example:**
 ```
 Using device: cuda
 Loading IMDB dataset for MLM pre-training...
@@ -395,28 +395,28 @@ Epoch 3/3: Train Loss: 9.0580 | Val Loss: 9.0374
 MLM pre-training completed!
 ```
 
-### **v2: 标准训练**
+### **v2: Standard Training**
 
-**适用场景**: 标准训练、中等规模数据集
+**Use Case**: Standard training, medium-scale datasets
 
 ```bash
-# 使用Hugging Face数据集 (流式模式，默认500K样本)
+# Use Hugging Face datasets (streaming mode, default 500K samples)
 python mlm_pretrain_v2.py hf
 
-# 指定数据大小 (5M样本，流式模式)
+# Specify data size (5M samples, streaming mode)
 python mlm_pretrain_v2.py hf true 5M
 
-# 指定数据大小 (50M样本，本地下载模式)
+# Specify data size (50M samples, local download mode)
 python mlm_pretrain_v2.py hf false 50M
 
-# 使用IMDB数据集
+# Use IMDB dataset
 python mlm_pretrain_v2.py imdb
 
-# 查看帮助
+# View help
 python mlm_pretrain_v2.py --help
 ```
 
-**输出示例:**
+**Output Example:**
 ```
 Using device: cuda
 Loading dataset for MLM pre-training (choice: hf, streaming: True)...
@@ -435,33 +435,33 @@ Epoch 2/5: Train Loss: 6.6408 | Val Loss: 6.5902
 ...
 ```
 
-### **v3: 多GPU训练**
+### **v3: Multi-GPU Training**
 
-**适用场景**: 大规模训练、多GPU环境
+**Use Case**: Large-scale training, multi-GPU environments
 
-#### **步骤1: 查看可用配置**
+#### **Step 1: View Available Configurations**
 ```bash
 python multi_gpu_configs.py list
 ```
 
-#### **步骤2: 生成训练脚本**
+#### **Step 2: Generate Training Scripts**
 ```bash
-# 生成H200 8-GPU标准训练脚本
+# Generate H200 8-GPU standard training script
 python multi_gpu_configs.py generate h200_8gpu_standard
 
-# 生成H200 8-GPU快速训练脚本
+# Generate H200 8-GPU fast training script
 python multi_gpu_configs.py generate h200_8gpu_fast
 
-# 生成H200 8-GPU高质量训练脚本
+# Generate H200 8-GPU quality training script
 python multi_gpu_configs.py generate h200_8gpu_quality
 ```
 
-#### **步骤3: 运行训练**
+#### **Step 3: Run Training**
 ```bash
-# 运行生成的脚本
+# Run generated script
 ./train_h200_8gpu_standard.sh
 
-# 或直接使用torchrun (默认500K样本)
+# Or use torchrun directly (default 500K samples)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -476,7 +476,7 @@ torchrun \
     --streaming true \
     --max-samples 500k
 
-# 指定数据大小 (5M样本)
+# Specify data size (5M samples)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -492,7 +492,7 @@ torchrun \
     --max-samples 5M
 ```
 
-**输出示例:**
+**Output Example:**
 ```
 Multi-GPU MLM Training Setup:
   - World Size: 8
@@ -518,25 +518,25 @@ Epoch 1/5: Train Loss: 6.1234 | Val Loss: 5.9876
 ...
 ```
 
-### **v4: 24GB内存优化训练**
+### **v4: 24GB Memory Optimized Training**
 
-**适用场景**: 24GB+ GPU环境、高内存利用率需求、大规模模型训练
+**Use Case**: 24GB+ GPU environments, high memory utilization requirements, large-scale model training
 
-#### **步骤1: 检查GPU配置**
+#### **Step 1: Check GPU Configuration**
 ```bash
-# 检查GPU内存
+# Check GPU memory
 nvidia-smi
 
-# 确保GPU内存 >= 24GB
-# 支持的GPU: H200, A10, RTX 4090等
+# Ensure GPU memory >= 24GB
+# Supported GPUs: H200, A10, RTX 4090, etc.
 ```
 
-#### **步骤2: 运行训练**
+#### **Step 2: Run Training**
 ```bash
-# 方法1: 使用预配置脚本 (推荐)
+# Method 1: Use pre-configured script (recommended)
 ./train_h200_8gpu_v4.sh
 
-# 方法2: 直接使用torchrun (8GPU)
+# Method 2: Use torchrun directly (8GPU)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -551,7 +551,7 @@ torchrun \
     --streaming true \
     --max-samples 10M
 
-# 方法3: 单GPU训练 (适合A10)
+# Method 3: Single GPU training (suitable for A10)
 python mlm_pretrain_v4.py \
     --dataset hf \
     --batch-size 96 \
@@ -561,16 +561,16 @@ python mlm_pretrain_v4.py \
     --max-samples 10M
 ```
 
-#### **步骤3: 监控训练**
+#### **Step 3: Monitor Training**
 ```bash
-# 查看GPU使用情况
+# View GPU usage
 watch -n 1 nvidia-smi
 
-# 查看训练日志
+# View training logs
 tail -f logs/v4_training_*.log
 ```
 
-**输出示例:**
+**Output Example:**
 ```
 Multi-GPU MLM Training v4 Setup (24GB Memory Optimized):
   - World Size: 8
@@ -597,73 +597,73 @@ Epoch 1/5: Train Loss: 5.2341 | Val Loss: 5.1234
 ...
 ```
 
-**特点说明:**
-- **高内存利用率**: 83% (20GB/24GB)
-- **大模型配置**: 8层/8头/256维嵌入
-- **大批次训练**: 96 per GPU (总768)
-- **长序列支持**: 256 tokens
-- **大词汇表**: 25K词汇
-- **快速训练**: ~20分钟 (10M样本)
-- **混合精度**: bfloat16优化
-- **分布式训练**: 支持多GPU
-- **自动缓存**: 智能数据缓存系统
+**Feature Description:**
+- **High memory utilization**: 83% (20GB/24GB)
+- **Large model configuration**: 8 layers/8 heads/256-dim embeddings
+- **Large batch training**: 96 per GPU (total 768)
+- **Long sequence support**: 256 tokens
+- **Large vocabulary**: 25K words
+- **Fast training**: ~20 minutes (10M samples)
+- **Mixed precision**: bfloat16 optimization
+- **Distributed training**: Supports multi-GPU
+- **Automatic caching**: Intelligent data caching system
 
 ## Model Configurations
 
-系统根据数据集自动选择合适的模型配置：
+The system automatically selects appropriate model configurations based on the dataset:
 
-### 🎯 **v1配置 (mlm_pretrain_v1.py)**
-- **层数**: 2
-- **注意力头**: 2
-- **嵌入维度**: 4
-- **最大序列长度**: 128
-- **词汇表大小**: 10,000
-- **参数数量**: ~41K
-- **训练时间**: ~5分钟
-- **适用场景**: 学习、测试、小数据集
+### 🎯 **v1 Configuration (mlm_pretrain_v1.py)**
+- **Layers**: 2
+- **Attention Heads**: 2
+- **Embedding Dimension**: 4
+- **Max Sequence Length**: 128
+- **Vocabulary Size**: 10,000
+- **Parameter Count**: ~41K
+- **Training Time**: ~5 minutes
+- **Use Case**: Learning, testing, small datasets
 
-### 🚀 **v2配置 (mlm_pretrain_v2.py)**
-- **层数**: 4 (HF) / 2 (IMDB)
-- **注意力头**: 4 (HF) / 2 (IMDB)
-- **嵌入维度**: 8 (HF) / 4 (IMDB)
-- **最大序列长度**: 128
-- **词汇表大小**: 10,000
-- **参数数量**: ~84K (HF) / ~41K (IMDB)
-- **训练时间**: ~30分钟 (HF) / ~5分钟 (IMDB)
-- **适用场景**: 大数据集、更好性能
+### 🚀 **v2 Configuration (mlm_pretrain_v2.py)**
+- **Layers**: 4 (HF) / 2 (IMDB)
+- **Attention Heads**: 4 (HF) / 2 (IMDB)
+- **Embedding Dimension**: 8 (HF) / 4 (IMDB)
+- **Max Sequence Length**: 128
+- **Vocabulary Size**: 10,000
+- **Parameter Count**: ~84K (HF) / ~41K (IMDB)
+- **Training Time**: ~30 minutes (HF) / ~5 minutes (IMDB)
+- **Use Case**: Large datasets, better performance
 
-### ⚡ **v3配置 (mlm_pretrain_v3.py)**
-- **层数**: 6
-- **注意力头**: 8
-- **嵌入维度**: 16
-- **最大序列长度**: 128
-- **词汇表大小**: 10,000
-- **参数数量**: ~182K
-- **训练时间**: ~30分钟 (8GPU)
-- **适用场景**: 大规模训练、多GPU环境
+### ⚡ **v3 Configuration (mlm_pretrain_v3.py)**
+- **Layers**: 6
+- **Attention Heads**: 8
+- **Embedding Dimension**: 16
+- **Max Sequence Length**: 128
+- **Vocabulary Size**: 10,000
+- **Parameter Count**: ~182K
+- **Training Time**: ~30 minutes (8GPU)
+- **Use Case**: Large-scale training, multi-GPU environments
 
-### 🚀 **v4配置 (mlm_pretrain_v4.py)**
-- **层数**: 8
-- **注意力头**: 8
-- **嵌入维度**: 256
-- **最大序列长度**: 256
-- **词汇表大小**: 25,000
-- **参数数量**: ~15M
-- **训练时间**: ~20分钟 (8GPU)
-- **适用场景**: 24GB+ GPU环境、高内存利用率需求
-- **内存使用**: ~20GB/24GB (83%利用率)
-- **批次大小**: 96 per GPU (总768)
-- **混合精度**: bfloat16优化
+### 🚀 **v4 Configuration (mlm_pretrain_v4.py)**
+- **Layers**: 8
+- **Attention Heads**: 8
+- **Embedding Dimension**: 256
+- **Max Sequence Length**: 256
+- **Vocabulary Size**: 25,000
+- **Parameter Count**: ~15M
+- **Training Time**: ~20 minutes (8GPU)
+- **Use Case**: 24GB+ GPU environments, high memory utilization requirements
+- **Memory Usage**: ~20GB/24GB (83% utilization)
+- **Batch Size**: 96 per GPU (total 768)
+- **Mixed Precision**: bfloat16 optimization
 
-### 📊 **所有可用配置**
-运行 `python model_config_comparison.py` 查看所有配置：
+### 📊 **All Available Configurations**
+Run `python model_config_comparison.py` to view all configurations:
 
-| 配置 | 层数 | 头数 | 嵌入 | 参数 | 适用场景 |
-|------|------|------|------|------|----------|
-| **IMDB Small** | 2 | 2 | 4 | ~41K | IMDB数据集 |
-| **HF Medium** | 4 | 4 | 8 | ~84K | HF数据集 |
-| **HF Large** | 6 | 8 | 16 | ~182K | 大数据集 |
-| **HF Extra Large** | 8 | 8 | 256 | ~15M | 24GB+ GPU优化 |
+| Configuration | Layers | Heads | Embedding | Parameters | Use Case |
+|---------------|--------|-------|-----------|------------|----------|
+| **IMDB Small** | 2 | 2 | 4 | ~41K | IMDB Dataset |
+| **HF Medium** | 4 | 4 | 8 | ~84K | HF Datasets |
+| **HF Large** | 6 | 8 | 16 | ~182K | Large Datasets |
+| **HF Extra Large** | 8 | 8 | 256 | ~15M | 24GB+ GPU Optimized |
 
 ## Dataset Options
 
@@ -777,31 +777,31 @@ The project includes an intelligent caching system:
 - For multi-GPU issues, check `MULTI_GPU_USAGE.md`
 - Test single GPU functionality before multi-GPU training
 
-## 📊 **版本对比总结**
+## 📊 **Version Comparison Summary**
 
-| 特性 | v1 (快速入门) | v2 (标准训练) | v3 (多GPU训练) | v4 (24GB优化) |
-|------|---------------|---------------|----------------|---------------|
-| **适用场景** | 学习、测试 | 标准训练 | 大规模训练 | 24GB+ GPU优化 |
-| **数据集** | IMDB | IMDB + HF | IMDB + HF | IMDB + HF |
-| **模型大小** | 小 (41K参数) | 中 (84K参数) | 大 (182K参数) | 超大 (15M参数) |
-| **训练时间** | ~5分钟 | ~30分钟 | ~30分钟 (8GPU) | ~20分钟 (8GPU) |
-| **GPU需求** | 1个 | 1个 | 多个 | 多个 |
-| **内存需求** | 低 | 中等 | 高 | 很高 (24GB+) |
-| **流式处理** | ❌ | ✅ | ✅ | ✅ |
-| **缓存系统** | ❌ | ✅ | ✅ | ✅ |
-| **混合精度** | ❌ | ❌ | ✅ | ✅ |
-| **分布式训练** | ❌ | ❌ | ✅ | ✅ |
-| **内存利用率** | 低 | 中等 | 中等 | 高 (83%) |
-| **批次大小** | 32 | 32 | 32 per GPU | 96 per GPU |
-| **序列长度** | 128 | 128 | 128 | 256 |
-| **词汇表大小** | 10K | 10K | 10K | 25K |
+| Feature | v1 (Quick Start) | v2 (Standard Training) | v3 (Multi-GPU Training) | v4 (24GB Optimized) |
+|---------|-------------------|------------------------|-------------------------|---------------------|
+| **Use Case** | Learning, Testing | Standard Training | Large-scale Training | 24GB+ GPU Optimized |
+| **Dataset** | IMDB | IMDB + HF | IMDB + HF | IMDB + HF |
+| **Model Size** | Small (41K params) | Medium (84K params) | Large (182K params) | Extra Large (15M params) |
+| **Training Time** | ~5 minutes | ~30 minutes | ~30 minutes (8GPU) | ~20 minutes (8GPU) |
+| **GPU Requirements** | 1 | 1 | Multiple | Multiple |
+| **Memory Requirements** | Low | Medium | High | Very High (24GB+) |
+| **Streaming** | ❌ | ✅ | ✅ | ✅ |
+| **Caching System** | ❌ | ✅ | ✅ | ✅ |
+| **Mixed Precision** | ❌ | ❌ | ✅ | ✅ |
+| **Distributed Training** | ❌ | ❌ | ✅ | ✅ |
+| **Memory Utilization** | Low | Medium | Medium | High (83%) |
+| **Batch Size** | 32 | 32 | 32 per GPU | 96 per GPU |
+| **Sequence Length** | 128 | 128 | 128 | 256 |
+| **Vocabulary Size** | 10K | 10K | 10K | 25K |
 
-## 🎯 **选择建议**
+## 🎯 **Selection Recommendations**
 
-- **初学者/测试**: 使用 `v1` - 快速、简单、资源需求低
-- **标准训练**: 使用 `v2` - 平衡性能和资源需求
-- **大规模训练**: 使用 `v3` - 充分利用多GPU资源
-- **24GB+ GPU环境**: 使用 `v4` - 高内存利用率、大模型、快速训练
+- **Beginners/Testing**: Use `v1` - Fast, simple, low resource requirements
+- **Standard Training**: Use `v2` - Balanced performance and resource requirements
+- **Large-scale Training**: Use `v3` - Fully utilize multi-GPU resources
+- **24GB+ GPU Environments**: Use `v4` - High memory utilization, large models, fast training
 
 ## Contributing
 
