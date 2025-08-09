@@ -515,7 +515,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
             
             # Forward pass with bfloat16 mixed precision (better for H200)
             try:
-                with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+                with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     loss = model(input_ids, labels)
                 
                 # Backward pass with gradient scaling
@@ -561,7 +561,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
                 input_ids = batch['input_ids'].to(device)
                 labels = batch['labels'].to(device)
                 
-                with autocast('cuda', dtype=torch.bfloat16):
+                with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     loss = model(input_ids, labels)
                 
                 total_val_loss += loss.item()

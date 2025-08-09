@@ -15,7 +15,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.amp import GradScaler
-from torch.cuda.amp import autocast
+# autocast is used directly from torch.amp.autocast
 from microbert.model import MicroBERT
 from microbert.utils import plot_mlm_results
 from hiq.vis import print_model
@@ -183,7 +183,7 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, 
             optimizer.zero_grad()
             
             # Forward pass with bfloat16 mixed precision
-            with autocast(dtype=torch.bfloat16):
+            with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                 loss = model(input_ids, labels)
             
             # Backward pass with gradient scaling
@@ -202,7 +202,7 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, 
                 input_ids = batch['input_ids'].to(device)
                 labels = batch['labels'].to(device)
                 
-                with autocast(dtype=torch.bfloat16):
+                with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     loss = model(input_ids, labels)
                 
                 val_loss += loss.item()

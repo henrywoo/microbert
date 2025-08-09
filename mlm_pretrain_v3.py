@@ -19,7 +19,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import torch.distributed as dist
-from torch.amp import GradScaler, autocast
+from torch.amp import GradScaler
+# autocast is used directly from torch.amp.autocast
 import time
 from pathlib import Path
 import datetime
@@ -458,7 +459,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
             optimizer.zero_grad()
             
             # Forward pass with bfloat16 mixed precision (better for H200)
-            with autocast('cuda', dtype=torch.bfloat16):
+            with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                 loss = model(input_ids, labels)
             
             # Backward pass with gradient scaling
@@ -493,7 +494,7 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
                 input_ids = batch['input_ids'].to(device)
                 labels = batch['labels'].to(device)
                 
-                with autocast('cuda', dtype=torch.bfloat16):
+                with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     loss = model(input_ids, labels)
                 
                 total_val_loss += loss.item()
