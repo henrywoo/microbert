@@ -170,13 +170,16 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
         print("Using local download mode - data will be saved to disk (faster but uses more space)")
 
     # 数据集与其可选配置（尽量选择公开可用、可流式，按大小排序）
+    # 为了开发/测试，优先选择较小的数据集以避免磁盘空间问题
     candidates = [
         # (dataset_name, dict(kwargs_for_load_dataset))
-        ("openwebtext", {}),  # ~8M documents, very large
-        ("wikipedia",  {"name": "20220301.en"}),   # ~6M articles
-        ("pile-cc",    {}),  # Common Crawl data, very large
-        ("c4",         {"name": "en"}),  # Common Crawl data
         ("wikitext",   {"name": "wikitext-103-raw-v1"}),  # ~1.8M tokens (smaller)
+        ("squad",      {}),  # Question answering dataset
+        ("imdb",       {}),  # Movie reviews
+        ("ag_news",    {}),  # News articles
+        ("yelp_polarity", {}),  # Yelp reviews
+        ("dbpedia_14", {}),  # Wikipedia articles
+        ("c4",         {"name": "en"}),  # Common Crawl data, very large (last resort)
     ]
 
     def extract_text(item: dict) -> str | None:
@@ -235,12 +238,28 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
                 return cached_data, []
             
             # Load dataset from Hugging Face
-            ds = load_dataset(
-                ds_name,
-                **ds_kwargs,
-                split="train",
-                streaming=streaming
-            )
+            try:
+                ds = load_dataset(
+                    ds_name,
+                    **ds_kwargs,
+                    split="train",
+                    streaming=streaming
+                )
+            except Exception as e:
+                print(f"Failed to load {ds_name} with streaming={streaming}: {e}")
+                # Try with opposite streaming setting
+                try:
+                    streaming_fallback = not streaming
+                    print(f"Trying with streaming={streaming_fallback}...")
+                    ds = load_dataset(
+                        ds_name,
+                        **ds_kwargs,
+                        split="train",
+                        streaming=streaming_fallback
+                    )
+                except Exception as e2:
+                    print(f"Failed to load {ds_name} with streaming={streaming_fallback}: {e2}")
+                    continue
 
             # 可选：shuffle。注意：streaming模式下需要设置一个足够大的缓冲区
             if streaming:

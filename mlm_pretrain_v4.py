@@ -218,20 +218,25 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     os.makedirs(cache_dir, exist_ok=True)
     
     # Define dataset options in order of preference (larger datasets first)
+    # For development/testing, prefer smaller datasets to avoid disk space issues
     dataset_options = [
-        {'name': 'openwebtext', 'kwargs': {}},  # ~8M documents, very large
-        {'name': 'wikipedia', 'kwargs': {'name': '20220301.en'}},  # ~6M articles
-        {'name': 'pile-cc', 'kwargs': {'name': 'pile-cc'}},  # Common Crawl data, very large
-        {'name': 'bookcorpus', 'kwargs': {}},  # ~11K books
         {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens (smaller)
+        {'name': 'squad', 'kwargs': {}},  # Question answering dataset
+        {'name': 'imdb', 'kwargs': {}},  # Movie reviews
+        {'name': 'ag_news', 'kwargs': {}},  # News articles
+        {'name': 'yelp_polarity', 'kwargs': {}},  # Yelp reviews
+        {'name': 'dbpedia_14', 'kwargs': {}},  # Wikipedia articles
+        {'name': 'c4', 'kwargs': {'name': 'en'}},  # Common Crawl data, very large (last resort)
     ]
     
     def extract_text(item: dict) -> str | None:
         # 按常见字段顺序取文本
-        text_fields = ['text', 'content', 'sentence', 'passage', 'article']
+        text_fields = ['text', 'content', 'sentence', 'passage', 'article', 'question', 'context', 'title', 'summary']
         for field in text_fields:
             if field in item and item[field]:
-                return item[field]
+                text = item[field]
+                if isinstance(text, str) and len(text.strip()) > 10:
+                    return text
         return None
     
     def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed):
@@ -283,11 +288,18 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
             
             # Load dataset
             if streaming:
-                dataset = load_dataset(ds_name, **ds_kwargs, streaming=True, split='train')
-                # Apply streaming shuffle
-                dataset = dataset.shuffle(seed=seed, buffer_size=10_000)
-                print("Applied streaming shuffle with buffer_size=10_000")
-                print(f"Dataset {ds_name} loaded in streaming mode")
+                try:
+                    dataset = load_dataset(ds_name, **ds_kwargs, streaming=True, split='train')
+                    # Apply streaming shuffle
+                    dataset = dataset.shuffle(seed=seed, buffer_size=10_000)
+                    print("Applied streaming shuffle with buffer_size=10_000")
+                    print(f"Dataset {ds_name} loaded in streaming mode")
+                except Exception as e:
+                    print(f"Streaming mode failed for {ds_name}: {e}")
+                    # Try non-streaming mode as fallback
+                    print(f"Trying non-streaming mode for {ds_name}...")
+                    dataset = load_dataset(ds_name, **ds_kwargs, split='train')
+                    print(f"Dataset {ds_name} loaded with {len(dataset)} total samples")
             else:
                 dataset = load_dataset(ds_name, **ds_kwargs, split='train')
                 print(f"Dataset {ds_name} loaded with {len(dataset)} total samples")
@@ -351,6 +363,11 @@ def train_mlm_multi_gpu(model, train_loader, val_loader, device, tokenizer, num_
     
     # Move model to device
     model = model.to(device)
+    
+    # Enable gradient checkpointing for memory efficiency (especially for large models)
+    if hasattr(model, 'gradient_checkpointing_enable'):
+        model.gradient_checkpointing_enable()
+        print(f"Enabled gradient checkpointing for memory efficiency")
     
     # Wrap model with DDP if using multiple GPUs (check world_size instead of device_count)
     if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
@@ -578,9 +595,10 @@ def main():
             print(f"GPU {local_rank} memory: {gpu_memory:.1f} GB")
         
         # Adjust batch size and model configuration based on available memory
+        # Target: Stay under 24GB per GPU for all configurations
         if gpu_memory >= 100:  # 100GB+ GPU (like H200)
-            # Use larger configuration for high-memory GPUs
-            adjusted_batch_size = min(args.batch_size * 2, 256)  # Double batch size, max 256
+            # Use conservative configuration to stay under 24GB per GPU
+            adjusted_batch_size = min(args.batch_size, 32)  # Conservative batch size, max 32
             model_scale = "large"
         elif gpu_memory >= 40:  # 40GB+ GPU (like A100)
             # Use medium configuration
@@ -588,7 +606,7 @@ def main():
             model_scale = "medium"
         else:  # 24GB or less (like A10)
             # Use smaller configuration
-            adjusted_batch_size = max(args.batch_size // 2, 32)  # Half batch size, min 32
+            adjusted_batch_size = max(args.batch_size // 2, 16)  # Half batch size, min 16
             model_scale = "small"
         
         if rank == 0:
@@ -732,10 +750,10 @@ def main():
             # Use configuration based on GPU memory
             if model_scale == "large":  # 100GB+ GPU
                 if rank == 0:
-                    print("Using large model configuration for high-memory GPU (100GB+)...")
-                n_heads = 16
-                n_embed = 512  # Larger for high-memory GPUs
-                n_layers = 12  # More layers for high-memory GPUs
+                    print("Using large model configuration for high-memory GPU (100GB+) - conservative for 24GB per GPU...")
+                n_heads = 8
+                n_embed = 256
+                n_layers = 6   # Reduced from 8
             elif model_scale == "medium":  # 40GB+ GPU
                 if rank == 0:
                     print("Using medium model configuration for medium-memory GPU (40GB+)...")
@@ -755,10 +773,10 @@ def main():
             # Use configuration based on GPU memory for IMDB dataset too
             if model_scale == "large":  # 100GB+ GPU
                 if rank == 0:
-                    print("Using large model configuration for IMDB dataset (high-memory GPU)...")
-                n_heads = 8
-                n_embed = 256
-                n_layers = 8
+                    print("Using large model configuration for IMDB dataset (high-memory GPU) - conservative for 24GB per GPU...")
+                n_heads = 4
+                n_embed = 128
+                n_layers = 6
             elif model_scale == "medium":  # 40GB+ GPU
                 if rank == 0:
                     print("Using medium model configuration for IMDB dataset (medium-memory GPU)...")

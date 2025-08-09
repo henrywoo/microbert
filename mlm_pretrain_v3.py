@@ -218,20 +218,25 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
     os.makedirs(cache_dir, exist_ok=True)
     
     # Define dataset options in order of preference (larger datasets first)
+    # For development/testing, prefer smaller datasets to avoid disk space issues
     dataset_options = [
-        {'name': 'openwebtext', 'kwargs': {}},  # ~8M documents, very large
-        {'name': 'wikipedia', 'kwargs': {'name': '20220301.en'}},  # ~6M articles
-        {'name': 'pile-cc', 'kwargs': {'name': 'pile-cc'}},  # Common Crawl data, very large
-        {'name': 'bookcorpus', 'kwargs': {}},  # ~11K books
         {'name': 'wikitext', 'kwargs': {'name': 'wikitext-103-raw-v1'}},  # ~1.8M tokens (smaller)
+        {'name': 'squad', 'kwargs': {}},  # Question answering dataset
+        {'name': 'imdb', 'kwargs': {}},  # Movie reviews
+        {'name': 'ag_news', 'kwargs': {}},  # News articles
+        {'name': 'yelp_polarity', 'kwargs': {}},  # Yelp reviews
+        {'name': 'dbpedia_14', 'kwargs': {}},  # Wikipedia articles
+        {'name': 'c4', 'kwargs': {'name': 'en'}},  # Common Crawl data, very large (last resort)
     ]
     
     def extract_text(item: dict) -> str | None:
         # 按常见字段顺序取文本
-        text_fields = ['text', 'content', 'sentence', 'passage', 'article']
+        text_fields = ['text', 'content', 'sentence', 'passage', 'article', 'question', 'context', 'title', 'summary']
         for field in text_fields:
             if field in item and item[field]:
-                return item[field]
+                text = item[field]
+                if isinstance(text, str) and len(text.strip()) > 10:
+                    return text
         return None
     
     def generate_cache_key(ds_name, ds_kwargs, max_samples, min_words, seed):
@@ -283,11 +288,18 @@ def load_hf_dataset(max_samples: int = 500_000, min_words: int = 5, seed: int = 
             
             # Load dataset
             if streaming:
-                dataset = load_dataset(ds_name, **ds_kwargs, streaming=True, split='train')
-                # Apply streaming shuffle
-                dataset = dataset.shuffle(seed=seed, buffer_size=10_000)
-                print("Applied streaming shuffle with buffer_size=10_000")
-                print(f"Dataset {ds_name} loaded in streaming mode")
+                try:
+                    dataset = load_dataset(ds_name, **ds_kwargs, streaming=True, split='train')
+                    # Apply streaming shuffle
+                    dataset = dataset.shuffle(seed=seed, buffer_size=10_000)
+                    print("Applied streaming shuffle with buffer_size=10_000")
+                    print(f"Dataset {ds_name} loaded in streaming mode")
+                except Exception as e:
+                    print(f"Streaming mode failed for {ds_name}: {e}")
+                    # Try non-streaming mode as fallback
+                    print(f"Trying non-streaming mode for {ds_name}...")
+                    dataset = load_dataset(ds_name, **ds_kwargs, split='train')
+                    print(f"Dataset {ds_name} loaded with {len(dataset)} total samples")
             else:
                 dataset = load_dataset(ds_name, **ds_kwargs, split='train')
                 print(f"Dataset {ds_name} loaded with {len(dataset)} total samples")
