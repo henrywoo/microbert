@@ -95,7 +95,8 @@ torchrun \
     --batch-size 32 \
     --epochs 5 \
     --lr 3e-5 \
-    --streaming true
+    --streaming true \
+    --max-samples 500k
 
 # 指定数据大小 (5M样本)
 torchrun \
@@ -196,7 +197,7 @@ python multi_gpu_configs.py generate h200_8gpu_standard
 
 #### **方法2: 直接使用torchrun**
 ```bash
-# H200 8-GPU标准训练
+# H200 8-GPU标准训练 (默认500K样本)
 torchrun \
     --nproc_per_node=8 \
     --nnodes=1 \
@@ -208,7 +209,23 @@ torchrun \
     --batch-size 32 \
     --epochs 5 \
     --lr 3e-5 \
-    --streaming true
+    --streaming true \
+    --max-samples 500k
+
+# 指定数据大小 (5M样本)
+torchrun \
+    --nproc_per_node=8 \
+    --nnodes=1 \
+    --node_rank=0 \
+    --master_addr=localhost \
+    --master_port=12355 \
+    mlm_pretrain_v3.py \
+    --dataset hf \
+    --batch-size 32 \
+    --epochs 5 \
+    --lr 3e-5 \
+    --streaming true \
+    --max-samples 5M
 ```
 
 #### **方法3: 使用通用脚本**
@@ -355,7 +372,8 @@ torchrun \
     --batch-size 32 \
     --epochs 5 \
     --lr 3e-5 \
-    --streaming true
+    --streaming true \
+    --max-samples 500k
 
 # 指定数据大小 (5M样本)
 torchrun \

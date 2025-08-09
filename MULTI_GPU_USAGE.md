@@ -36,7 +36,8 @@ torchrun \
     --batch-size 32 \
     --epochs 5 \
     --lr 3e-5 \
-    --streaming true
+    --streaming true \
+    --max-samples 500k
 ```
 
 ### Method 3: Using the Generic Script
@@ -78,6 +79,7 @@ Options:
   --batch-size INT        Batch size per GPU (default: 32)
   --epochs INT            Number of training epochs (default: 5)
   --lr FLOAT              Learning rate (default: 3e-5)
+  --max-samples STR       Maximum number of samples to load (e.g., 500k, 5M, 50M, 500M)
   --local_rank INT        Local rank for distributed training (auto-detected)
 ```
 

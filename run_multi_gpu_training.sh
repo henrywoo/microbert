@@ -11,6 +11,7 @@ BATCH_SIZE_PER_GPU=${2:-32}
 EPOCHS=${3:-5}
 LEARNING_RATE=${4:-3e-5}
 STREAMING=${5:-"true"}
+MAX_SAMPLES=${6:-"500k"}  # Default to 500k samples
 
 # Number of GPUs (adjust based on your setup)
 NUM_GPUS=8
@@ -25,6 +26,7 @@ echo "Epochs: $EPOCHS"
 echo "Learning rate: $LEARNING_RATE"
 echo "Streaming: $STREAMING"
 echo "Number of GPUs: $NUM_GPUS"
+echo "Dataset samples: $MAX_SAMPLES"
 echo "=========================================="
 
 # Check if CUDA is available
@@ -66,6 +68,7 @@ torchrun \
     --epochs $EPOCHS \
     --lr $LEARNING_RATE \
     --streaming $STREAMING \
+    --max-samples $MAX_SAMPLES \
     2>&1 | tee $LOG_FILE
 
 echo "Training completed!"
