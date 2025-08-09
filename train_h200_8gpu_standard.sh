@@ -12,6 +12,7 @@ EPOCHS=5
 LEARNING_RATE=3e-05
 STREAMING="true"
 NUM_GPUS=8
+MAX_SAMPLES="1M"  # Dataset size configuration
 
 echo "=========================================="
 echo "H200 8-GPU Standard Training"
@@ -24,7 +25,7 @@ echo "Epochs: $EPOCHS"
 echo "Learning rate: $LEARNING_RATE"
 echo "Number of GPUs: $NUM_GPUS"
 echo "Model: 6L/8H/16D"
-echo "Dataset samples: 1,000,000"
+echo "Dataset samples: $MAX_SAMPLES"
 echo "Estimated time per epoch: 6.5 minutes"
 echo "Estimated total time: 0.5 hours"
 echo "=========================================="
@@ -62,6 +63,7 @@ torchrun \
     --epochs $EPOCHS \
     --lr $LEARNING_RATE \
     --streaming $STREAMING \
+    --max-samples $MAX_SAMPLES \
     2>&1 | tee $LOG_FILE
 
 echo "Training completed!"

@@ -244,6 +244,15 @@ def generate_training_script(config_name: str, output_file: str = None):
     config = get_config(config_name)
     time_estimate = estimate_training_time(config)
     
+    # Format max_samples for command line (e.g., 500_000 -> "500k", 1_000_000 -> "1M")
+    max_samples = config.dataset_config['max_samples']
+    if max_samples >= 1_000_000:
+        max_samples_str = f"{max_samples // 1_000_000}M"
+    elif max_samples >= 1_000:
+        max_samples_str = f"{max_samples // 1_000}k"
+    else:
+        max_samples_str = str(max_samples)
+    
     script_content = f"""#!/bin/bash
 
 # Auto-generated training script for {config.name}
@@ -258,6 +267,7 @@ EPOCHS={config.epochs}
 LEARNING_RATE={config.learning_rate}
 STREAMING="true"
 NUM_GPUS={config.num_gpus}
+MAX_SAMPLES="{max_samples_str}"  # Dataset size configuration
 
 echo "=========================================="
 echo "{config.name}"
@@ -270,7 +280,7 @@ echo "Epochs: $EPOCHS"
 echo "Learning rate: $LEARNING_RATE"
 echo "Number of GPUs: $NUM_GPUS"
 echo "Model: {config.model_config['n_layers']}L/{config.model_config['n_heads']}H/{config.model_config['n_embed']}D"
-echo "Dataset samples: {config.dataset_config['max_samples']:,}"
+echo "Dataset samples: $MAX_SAMPLES"
 echo "Estimated time per epoch: {time_estimate['time_per_epoch_minutes']:.1f} minutes"
 echo "Estimated total time: {time_estimate['total_time_hours']:.1f} hours"
 echo "=========================================="
@@ -308,6 +318,7 @@ torchrun \\
     --epochs $EPOCHS \\
     --lr $LEARNING_RATE \\
     --streaming $STREAMING \\
+    --max-samples $MAX_SAMPLES \\
     2>&1 | tee $LOG_FILE
 
 echo "Training completed!"
