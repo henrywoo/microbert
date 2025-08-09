@@ -36,3 +36,4 @@ ipykernel>=6.25.0
 # Additional utilities
 tensorboard>=2.13.0
 wandb>=0.15.0
+hiq-python
