@@ -136,7 +136,7 @@ def load_imdb_data():
     return train_data, test_data
 
 
-def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=10, learning_rate=5e-5):
+def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3, learning_rate=5e-5):
     """
     Train the MLM model
     """
@@ -366,7 +366,7 @@ def main():
     else:
         print('Starting MLM pre-training...')
         # Train model
-        history = train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=10)
+        history = train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=3)
         print('MLM pre-training completed!')
 
     # Test the model with some examples
