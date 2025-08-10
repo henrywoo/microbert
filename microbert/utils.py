@@ -115,7 +115,15 @@ class IMDBDataloader:
 
 
 
-def plot_results(history, do_val=True):
+def plot_results(history, do_val=True, save_path=None):
+    """
+    Plot training results with loss, accuracy, and F1 score
+    
+    Args:
+        history: Dictionary containing training metrics
+        do_val: Whether to plot validation metrics
+        save_path: Optional path to save the plot image
+    """
     # Set style for better looking plots
     plt.style.use('default')
     
@@ -161,14 +169,28 @@ def plot_results(history, do_val=True):
     axes[2].grid(True, alpha=0.3, linestyle='--')
     axes[2].set_facecolor('#f8f9fa')
     
-    # Adjust layout and display
+    # Adjust layout
     plt.tight_layout()
     
+    # Save the plot if save_path is provided
     if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f'MLM training history plot saved to {save_path}')
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f'Training results plot saved to: {save_path}')
     
-    plt.show()
+    # Display the plot (works in both Jupyter and regular Python)
+    try:
+        # Check if we're in a Jupyter environment
+        get_ipython()
+        # In Jupyter, use display() for better integration
+        from IPython.display import display
+        display(fig)
+    except NameError:
+        # Not in Jupyter, use regular plt.show()
+        plt.show()
+    
+    return fig
 
 
 def plot_mlm_results(history, save_path=None):
@@ -210,9 +232,28 @@ def plot_mlm_results(history, save_path=None):
     axes[1].grid(True, alpha=0.3, linestyle='--')
     axes[1].set_facecolor('#f8f9fa')
     
-    # Adjust layout and display
+    # Adjust layout
     plt.tight_layout()
-    plt.show()
+    
+    # Save the plot if save_path is provided
+    if save_path:
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f'Plot saved to: {save_path}')
+    
+    # Display the plot (works in both Jupyter and regular Python)
+    try:
+        # Check if we're in a Jupyter environment
+        get_ipython()
+        # In Jupyter, use display() for better integration
+        from IPython.display import display
+        display(fig)
+    except NameError:
+        # Not in Jupyter, use regular plt.show()
+        plt.show()
+    
+    return fig
 
 
 def get_attention_scores(model, input_ids):
@@ -353,9 +394,21 @@ def plot_parallel(matrix, tokens, show_all_connections=False):
     cbar.set_label('Attention Score', fontsize=12, fontweight='bold')
     cbar.ax.tick_params(labelsize=10)
     
-    # Adjust layout and display
+    # Adjust layout
     plt.tight_layout()
-    plt.show()
+    
+    # Display the plot (works in both Jupyter and regular Python)
+    try:
+        # Check if we're in a Jupyter environment
+        get_ipython()
+        # In Jupyter, use display() for better integration
+        from IPython.display import display
+        display(fig)
+    except NameError:
+        # Not in Jupyter, use regular plt.show()
+        plt.show()
+    
+    return fig
 
 
 def save_model(model, tokenizer, history, config, save_dir):

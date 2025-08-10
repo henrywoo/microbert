@@ -192,6 +192,75 @@ def train_mlm(model, train_loader, val_loader, device, tokenizer, num_epochs=10,
     return history
 
 
+def test_mlm_model(model, tokenizer, device):
+    """
+    Test the MLM model with example masked sentences
+    
+    Args:
+        model: Trained MLM model
+        tokenizer: Tokenizer with vocabulary
+        device: Device to run inference on
+    """
+    print('\n=== Testing MLM Model ===')
+    test_texts = [
+        ["this", "movie", "is", "[MASK]", "fantastic"],
+        ["the", "acting", "was", "[MASK]", "but", "the", "plot", "was", "confusing"],
+        ["amazing", "[MASK]", "by", "all", "actors", "highly", "recommended"]
+    ]
+
+    model.eval()
+    for i, text_tokens in enumerate(test_texts, 1):
+        print(f'{i}. Original: {" ".join(text_tokens)}')
+
+        # Convert tokens to IDs
+        input_ids = []
+        for token in text_tokens:
+            if token in tokenizer.vocab:
+                input_ids.append(tokenizer.vocab[token])
+            else:
+                input_ids.append(tokenizer.vocab['[UNK]'])
+
+        input_ids = torch.tensor([input_ids], dtype=torch.long).to(device)
+
+        # Get predictions
+        with torch.no_grad():
+            logits = model(input_ids)
+
+            # Debug: Check logits values
+            print(f'   Logits shape: {logits.shape}')
+            print(f'   Logits min/max: {logits.min().item():.3f}/{logits.max().item():.3f}')
+            print(f'   Logits mean: {logits.mean().item():.3f}')
+
+            probs = F.softmax(logits, dim=-1)
+
+            # Debug: Check probabilities
+            print(f'   Probs min/max: {probs.min().item():.6f}/{probs.max().item():.6f}')
+            print(f'   Probs mean: {probs.mean().item():.6f}')
+
+            # Find masked positions
+            mask_token_id = tokenizer.vocab['[MASK]']
+            masked_positions = (input_ids[0] == mask_token_id).nonzero(as_tuple=True)[0]
+
+            for pos in masked_positions:
+                top_k = 5
+                # Use logits directly for better numerical stability
+                top_logits, top_indices = torch.topk(logits[0, pos], top_k)
+
+                print(f'   [MASK] at position {pos}:')
+                for j in range(top_k):
+                    token_id = top_indices[j].item()
+                    # Find token by ID
+                    token = None
+                    for t, tid in tokenizer.vocab.items():
+                        if tid == token_id:
+                            token = t
+                            break
+                    logit = top_logits[j].item()
+                    prob = F.softmax(top_logits, dim=0)[j].item()
+                    print(f'     {token}: logit={logit:.3f}, prob={prob:.6f}')
+        print()
+
+
 def save_mlm_model(model, tokenizer, history, save_dir):
     """
     Save the MLM pre-trained model
@@ -301,64 +370,7 @@ def main():
         print('MLM pre-training completed!')
 
     # Test the model with some examples
-    print('\n=== Testing MLM Model ===')
-    test_texts = [
-        ["this", "movie", "is", "[MASK]", "fantastic"],
-        ["the", "acting", "was", "[MASK]", "but", "the", "plot", "was", "confusing"],
-        ["amazing", "[MASK]", "by", "all", "actors", "highly", "recommended"]
-    ]
-
-    model.eval()
-    for i, text_tokens in enumerate(test_texts, 1):
-        print(f'{i}. Original: {" ".join(text_tokens)}')
-
-        # Convert tokens to IDs
-        input_ids = []
-        for token in text_tokens:
-            if token in tokenizer.vocab:
-                input_ids.append(tokenizer.vocab[token])
-            else:
-                input_ids.append(tokenizer.vocab['[UNK]'])
-
-        input_ids = torch.tensor([input_ids], dtype=torch.long).to(device)
-
-        # Get predictions
-        with torch.no_grad():
-            logits = model(input_ids)
-
-            # Debug: Check logits values
-            print(f'   Logits shape: {logits.shape}')
-            print(f'   Logits min/max: {logits.min().item():.3f}/{logits.max().item():.3f}')
-            print(f'   Logits mean: {logits.mean().item():.3f}')
-
-            probs = F.softmax(logits, dim=-1)
-
-            # Debug: Check probabilities
-            print(f'   Probs min/max: {probs.min().item():.6f}/{probs.max().item():.6f}')
-            print(f'   Probs mean: {probs.mean().item():.6f}')
-
-            # Find masked positions
-            mask_token_id = tokenizer.vocab['[MASK]']
-            masked_positions = (input_ids[0] == mask_token_id).nonzero(as_tuple=True)[0]
-
-            for pos in masked_positions:
-                top_k = 5
-                # Use logits directly for better numerical stability
-                top_logits, top_indices = torch.topk(logits[0, pos], top_k)
-
-                print(f'   [MASK] at position {pos}:')
-                for j in range(top_k):
-                    token_id = top_indices[j].item()
-                    # Find token by ID
-                    token = None
-                    for t, tid in tokenizer.vocab.items():
-                        if tid == token_id:
-                            token = t
-                            break
-                    logit = top_logits[j].item()
-                    prob = F.softmax(top_logits, dim=0)[j].item()
-                    print(f'     {token}: logit={logit:.3f}, prob={prob:.6f}')
-        print()
+    test_mlm_model(model, tokenizer, device)
 
     # Plot training history if available
     if history is not None:

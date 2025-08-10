@@ -14,6 +14,7 @@ setup(
         'tqdm'
     ],
     python_requires='>=3.7',
+
     author='Fuheng Wu',
     author_email='wufuheng@gmail.com',
     description='A lightweight BERT implementation for text classification',

@@ -54,5 +54,16 @@ axes[2].axis('off')
 
 # Adjust layout to prevent overlap between subplots
 plt.tight_layout()
-# Display the visualization
-plt.show()
+
+# Display the visualization (works in both Jupyter and regular Python)
+try:
+    # Check if we're in a Jupyter environment
+    get_ipython()
+    # In Jupyter, use display() for better integration
+    from IPython.display import display
+    display(fig)
+except NameError:
+    # Not in Jupyter, use regular plt.show()
+    plt.show()
+
+print("Masked fill operation demonstration completed!")

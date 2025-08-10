@@ -1,4 +1,4 @@
-# 🚀 MicroBERT
+# MicroBERT: Lightweight BERT Implementation for Text Classification
 
 > **A comprehensive educational project for learning BERT implementation, pretraining, and fine-tuning with GPU-optimized training pipelines**
 
@@ -33,7 +33,7 @@ All versions are designed for **pretraining** with different optimizations:
 
 ### SFT Implementation
 
-- **`sft_hfbert.py`**: Complete Supervised Fine-Tuning implementation for downstream tasks
+- **`sft_hfbert`**: Complete Supervised Fine-Tuning implementation for downstream tasks
 
 ## ✨ Features
 
@@ -81,10 +81,21 @@ pip install -e .
 
 This educational project provides multiple versions optimized for different learning objectives and hardware configurations. Choose based on your educational needs:
 
+#### **📊 Dataset Preparation**
+
+Before running the pretraining scripts, you may need to prepare datasets:
+
+```bash
+# Prepare IMDB dataset (creates imdb_train.json and imdb_test.json)
+python -m microbert.data.prepare_imdb_json
+```
+
+**Note**: The IMDB dataset is automatically downloaded and prepared when you run the pretraining scripts. The preparation script above is useful if you want to customize the dataset format or work with the data separately.
+
 #### **v0: Basic Learning (Single GPU, Full Precision)**
 ```bash
 # Basic training for learning fundamentals
-python mlm_pretrain_v0.py
+python -m microbert.pretrain.mlm_pretrain_v0
 ```
 - **Use Case**: Learning BERT fundamentals, basic implementation understanding
 - **Dataset**: IMDB movie reviews (~25K samples)
@@ -96,7 +107,7 @@ python mlm_pretrain_v0.py
 #### **v1: Mixed Precision Learning (Single GPU, Mixed Precision)**
 ```bash
 # Mixed precision training for learning optimization techniques
-python mlm_pretrain_v1.py
+python -m microbert.pretrain.mlm_pretrain_v1
 ```
 - **Use Case**: Learning mixed precision training, optimization techniques
 - **Dataset**: IMDB movie reviews (~25K samples)
@@ -108,16 +119,16 @@ python mlm_pretrain_v1.py
 #### **v2: Medium Model Learning (Single GPU, Full Precision)**
 ```bash
 # Use Hugging Face large datasets (default 500K samples)
-python mlm_pretrain_v2.py hf
+python -m microbert.pretrain.mlm_pretrain_v2 hf
 
 # Specify data size (5M samples)
-python mlm_pretrain_v2.py hf true 5M
+python -m microbert.pretrain.mlm_pretrain_v2 hf true 5M
 
 # Specify data size (50M samples)
-python mlm_pretrain_v2.py hf false 50M
+python -m microbert.pretrain.mlm_pretrain_v2 hf false 50M
 
 # Or use IMDB dataset
-python mlm_pretrain_v2.py imdb
+python -m microbert.pretrain.mlm_pretrain_v2 imdb
 ```
 - **Use Case**: Learning with medium-scale models, understanding larger datasets
 - **Dataset**: Hugging Face datasets (configurable size: 500K-500M samples) or IMDB
@@ -129,7 +140,7 @@ python mlm_pretrain_v2.py imdb
 #### **v3: Multi-GPU Learning (Multi-GPU, Full Precision)**
 ```bash
 # Use pre-configured script (recommended)
-python multi_gpu_configs.py generate h200_8gpu_standard
+python -m microbert.multi_gpu_configs generate h200_8gpu_standard
 ./train_h200_8gpu_standard.sh
 
 # Or use torchrun directly (default 500K samples)
@@ -139,7 +150,7 @@ torchrun \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v3.py \
+    python -m microbert.pretrain.mlm_pretrain_v3 \
     --dataset hf \
     --batch-size 32 \
     --epochs 5 \
@@ -167,7 +178,7 @@ torchrun \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v4.py \
+    python -m microbert.pretrain.mlm_pretrain_v4 \
     --dataset hf \
     --batch-size 96 \
     --epochs 5 \
@@ -192,7 +203,7 @@ For learning supervised fine-tuning techniques:
 
 ```bash
 # Complete SFT implementation for downstream tasks
-python sft_hfbert.py
+python -m microbert.sft.sft_hfbert
 ```
 
 - **Use Case**: Learning supervised fine-tuning for downstream NLP tasks
@@ -211,7 +222,7 @@ python sft_hfbert.py
 
 ```bash
 # Basic training for learning BERT fundamentals
-python mlm_pretrain_v0.py
+python -m microbert.pretrain.mlm_pretrain_v0
 ```
 
 **Features:**
@@ -225,7 +236,7 @@ python mlm_pretrain_v0.py
 
 ```bash
 # Mixed precision training for learning optimization techniques
-python mlm_pretrain_v1.py
+python -m microbert.pretrain.mlm_pretrain_v1
 ```
 
 **Features:**
@@ -239,13 +250,13 @@ python mlm_pretrain_v1.py
 
 ```bash
 # Use Hugging Face large datasets (streaming mode)
-python mlm_pretrain_v2.py hf
+python -m microbert.pretrain.mlm_pretrain_v2 hf
 
 # Use Hugging Face large datasets (local download mode)
-python mlm_pretrain_v2.py hf false
+python -m microbert.pretrain.mlm_pretrain_v2 hf false
 
 # Use IMDB dataset
-python mlm_pretrain_v2.py imdb
+python -m microbert.pretrain.mlm_pretrain_v2 imdb
 ```
 
 **Features:**
@@ -260,10 +271,10 @@ python mlm_pretrain_v2.py imdb
 #### **Method 1: Use Pre-configured Scripts**
 ```bash
 # View available configurations
-python multi_gpu_configs.py list
+python -m microbert.multi_gpu_configs list
 
 # Generate H200 8-GPU training script
-python multi_gpu_configs.py generate h200_8gpu_standard
+python -m microbert.multi_gpu_configs generate h200_8gpu_standard
 
 # Run training
 ./train_h200_8gpu_standard.sh
@@ -278,7 +289,7 @@ torchrun \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v3.py \
+    python -m microbert.pretrain.mlm_pretrain_v3 \
     --dataset hf \
     --batch-size 32 \
     --epochs 5 \
@@ -293,7 +304,7 @@ torchrun \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v3.py \
+    python -m microbert.pretrain.mlm_pretrain_v3 \
     --dataset hf \
     --batch-size 32 \
     --epochs 5 \
@@ -351,7 +362,7 @@ torchrun \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v4.py \
+    python -m microbert.pretrain.mlm_pretrain_v4 \
     --dataset hf \
     --batch-size 96 \
     --epochs 5 \
@@ -363,7 +374,7 @@ torchrun \
 #### **Method 3: Single GPU Training (Suitable for A10)**
 ```bash
 # Single GPU 24GB optimized training
-python mlm_pretrain_v4.py \
+python -m microbert.pretrain.mlm_pretrain_v4 \
     --dataset hf \
     --batch-size 96 \
     --epochs 5 \
@@ -406,7 +417,7 @@ For learning supervised fine-tuning techniques:
 
 ```bash
 # Complete SFT implementation for downstream tasks
-python sft_hfbert.py
+python -m microbert.sft.sft_hfbert
 ```
 
 **Features:**
@@ -418,24 +429,24 @@ python sft_hfbert.py
 
 ### 3. Test Streaming Functionality
 ```bash
-python test_streaming.py
+python -m microbert.test.test_streaming
 ```
 
 ### 4. Test Caching Functionality
 ```bash
-python test_cache.py
+python -m microbert.test.test_cache
 ```
 
 ### 5. Manage Cache
 ```bash
 # View cache information
-python cache_manager.py info
+python -m microbert.test.cache_manager info
 
 # Clear cache
-python cache_manager.py clear
+python -m microbert.test.cache_manager clear
 
 # Show disk usage
-python cache_manager.py usage
+python -m microbert.test.cache_manager usage
 ```
 
 ## 📖 Detailed Running Guide
@@ -446,10 +457,10 @@ python cache_manager.py usage
 
 ```bash
 # Basic run
-python mlm_pretrain_v1.py
+python -m microbert.pretrain.mlm_pretrain_v0
 
 # View help
-python mlm_pretrain_v1.py --help
+python -m microbert.pretrain.mlm_pretrain_v0 --help
 ```
 
 **Output Example:**
@@ -472,10 +483,10 @@ MLM pre-training completed!
 
 ```bash
 # Basic run
-python mlm_pretrain_v1.py
+python -m microbert.pretrain.mlm_pretrain_v1
 
 # View help
-python mlm_pretrain_v1.py --help
+python -m microbert.pretrain.mlm_pretrain_v1 --help
 ```
 
 **Output Example:**
@@ -498,19 +509,19 @@ MLM pre-training completed!
 
 ```bash
 # Use Hugging Face datasets (streaming mode, default 500K samples)
-python mlm_pretrain_v2.py hf
+python -m microbert.pretrain.mlm_pretrain_v2 hf
 
 # Specify data size (5M samples, streaming mode)
-python mlm_pretrain_v2.py hf true 5M
+python -m microbert.pretrain.mlm_pretrain_v2 hf true 5M
 
 # Specify data size (50M samples, local download mode)
-python mlm_pretrain_v2.py hf false 50M
+python -m microbert.pretrain.mlm_pretrain_v2 hf false 50M
 
 # Use IMDB dataset
-python mlm_pretrain_v2.py imdb
+python -m microbert.pretrain.mlm_pretrain_v2 imdb
 
 # View help
-python mlm_pretrain_v2.py --help
+python -m microbert.pretrain.mlm_pretrain_v2 --help
 ```
 
 **Output Example:**
@@ -538,19 +549,19 @@ Epoch 2/5: Train Loss: 6.6408 | Val Loss: 6.5902
 
 #### **Step 1: View Available Configurations**
 ```bash
-python multi_gpu_configs.py list
+python -m microbert.multi_gpu_configs list
 ```
 
 #### **Step 2: Generate Training Scripts**
 ```bash
 # Generate H200 8-GPU standard training script
-python multi_gpu_configs.py generate h200_8gpu_standard
+python -m microbert.multi_gpu_configs generate h200_8gpu_standard
 
 # Generate H200 8-GPU fast training script
-python multi_gpu_configs.py generate h200_8gpu_fast
+python -m microbert.multi_gpu_configs generate h200_8gpu_fast
 
 # Generate H200 8-GPU quality training script
-python multi_gpu_configs.py generate h200_8gpu_quality
+python -m microbert.multi_gpu_configs generate h200_8gpu_quality
 ```
 
 #### **Step 3: Run Training**
@@ -565,7 +576,7 @@ torchrun \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v3.py \
+    python -m microbert.pretrain.mlm_pretrain_v3 \
     --dataset hf \
     --batch-size 32 \
     --epochs 5 \
@@ -580,7 +591,7 @@ torchrun \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v3.py \
+    python -m microbert.pretrain.mlm_pretrain_v3 \
     --dataset hf \
     --batch-size 32 \
     --epochs 5 \
@@ -640,7 +651,7 @@ torchrun \
     --node_rank=0 \
     --master_addr=localhost \
     --master_port=12355 \
-    mlm_pretrain_v4.py \
+    python -m microbert.pretrain.mlm_pretrain_v4 \
     --dataset hf \
     --batch-size 96 \
     --epochs 5 \
@@ -649,7 +660,7 @@ torchrun \
     --max-samples 10M
 
 # Method 3: Single GPU training (suitable for A10)
-python mlm_pretrain_v4.py \
+python -m microbert.pretrain.mlm_pretrain_v4 \
     --dataset hf \
     --batch-size 96 \
     --epochs 5 \
@@ -709,7 +720,7 @@ Epoch 1/5: Train Loss: 5.2341 | Val Loss: 5.1234
 
 The system automatically selects appropriate model configurations based on the dataset:
 
-### 🎯 **v0 Configuration (mlm_pretrain_v0.py)**
+### 🎯 **v0 Configuration (mlm_pretrain_v0)**
 - **Layers**: 2
 - **Attention Heads**: 2
 - **Embedding Dimension**: 4
@@ -719,7 +730,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Training Time**: ~5 minutes
 - **Use Case**: Learning BERT fundamentals, basic implementation understanding
 
-### 🎯 **v1 Configuration (mlm_pretrain_v1.py)**
+### 🎯 **v1 Configuration (mlm_pretrain_v1)**
 - **Layers**: 2
 - **Attention Heads**: 2
 - **Embedding Dimension**: 4
@@ -729,7 +740,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Training Time**: ~5 minutes
 - **Use Case**: Learning mixed precision training, optimization techniques
 
-### 🚀 **v2 Configuration (mlm_pretrain_v2.py)**
+### 🚀 **v2 Configuration (mlm_pretrain_v2)**
 - **Layers**: 4 (HF) / 2 (IMDB)
 - **Attention Heads**: 4 (HF) / 2 (IMDB)
 - **Embedding Dimension**: 8 (HF) / 4 (IMDB)
@@ -739,7 +750,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Training Time**: ~30 minutes (HF) / ~5 minutes (IMDB)
 - **Use Case**: Learning with medium-scale models, understanding larger datasets
 
-### ⚡ **v3 Configuration (mlm_pretrain_v3.py)**
+### ⚡ **v3 Configuration (mlm_pretrain_v3)**
 - **Layers**: 6
 - **Attention Heads**: 8
 - **Embedding Dimension**: 16
@@ -749,7 +760,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Training Time**: ~30 minutes (8GPU)
 - **Use Case**: Learning distributed training, multi-GPU environments
 
-### 🚀 **v4 Configuration (mlm_pretrain_v4.py)**
+### 🚀 **v4 Configuration (mlm_pretrain_v4)**
 - **Layers**: 8
 - **Attention Heads**: 8
 - **Embedding Dimension**: 256
@@ -763,7 +774,7 @@ The system automatically selects appropriate model configurations based on the d
 - **Mixed Precision**: bfloat16 optimization
 
 ### 📊 **All Available Configurations**
-Run `python model_config_comparison.py` to view all configurations:
+Run `python -m microbert.test.model_config_comparison` to view all configurations:
 
 | Configuration | Layers | Heads | Embedding | Parameters | Educational Focus |
 |---------------|--------|-------|-----------|------------|-------------------|
@@ -826,7 +837,7 @@ The project includes an intelligent caching system:
 ## 💡 Performance Tips
 
 ### For Limited Resources
-- Use IMDB dataset (`mlm_pretrain_v1.py`)
+- Use IMDB dataset (`mlm_pretrain_v1`)
 - Use streaming mode for HF datasets
 - Reduce `max_samples` parameter
 
@@ -875,7 +886,7 @@ The project includes an intelligent caching system:
 6. **Distributed Training Issues**
    - Check if all GPUs are visible
    - Ensure proper environment variables are set
-   - Try single GPU first: `python mlm_pretrain_v3.py --dataset imdb` or `python mlm_pretrain_v4.py --dataset imdb`
+   - Try single GPU first: `python -m microbert.pretrain.mlm_pretrain_v3 --dataset imdb` or `python -m microbert.pretrain.mlm_pretrain_v4 --dataset imdb`
 
 ### Getting Help
 
@@ -911,7 +922,7 @@ The project includes an intelligent caching system:
 - **Medium-scale Learning**: Use `v2` - Balanced performance, medium models, large datasets
 - **Learning Distributed Training**: Use `v3` - Multi-GPU environments, distributed training concepts
 - **Advanced Distributed Learning**: Use `v4` - Advanced multi-GPU, mixed precision, high memory utilization
-- **Learning Fine-tuning**: Use `sft_hfbert.py` - Complete SFT pipeline for downstream tasks
+- **Learning Fine-tuning**: Use `sft_hfbert` - Complete SFT pipeline for downstream tasks
 
 ## 🤝 Contributing
 
