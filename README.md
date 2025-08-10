@@ -1,4 +1,4 @@
-# MicroBERT: Lightweight BERT Implementation for Text Classification
+# 🚀 MicroBERT
 
 > **A comprehensive educational project for learning BERT implementation, pretraining, and fine-tuning with GPU-optimized training pipelines**
 
