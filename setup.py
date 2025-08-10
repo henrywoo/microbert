@@ -3,7 +3,7 @@ import os
 
 setup(
     name='microbert',
-    version='0.0.2.dev0',
+    version='0.0.2',
     py_modules=['microbert.train', 'microbert.data.prepare_imdb_json'],
     packages=['microbert'],
     install_requires=[
@@ -19,7 +19,7 @@ setup(
     description='A lightweight BERT implementation for text classification',
     long_description=open('README.md').read() if os.path.exists('README.md') else '',
     long_description_content_type='text/markdown',
-    url='https://github.com/yourusername/microbert',
+    url='https://github.com/henrywoo/microbert',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
